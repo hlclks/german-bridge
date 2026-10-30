@@ -615,8 +615,7 @@
             
             return `<div class="playing-card ${suitColors[card.suit]} ${curClass}" ${clickEv}>
                         <div class="absolute top-1 ${valClass} font-black leading-none">${card.value}</div>
-                        <div class="absolute inset-0 flex items-center justify-center text-4xl md:text-5xl opacity-20 pointer-events-none">${card.suit}</div>
-                        <div class="absolute bottom-1 right-2 text-xl md:text-2xl leading-none">${card.suit}</div>
+                        <div class="absolute inset-0 flex items-center justify-center text-4xl md:text-5xl pointer-events-none">${card.suit}</div>
                     </div>`;
         };
 
