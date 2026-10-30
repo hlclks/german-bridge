@@ -31,10 +31,29 @@
             overflow: hidden;
         }
         .playing-card:hover.cursor-pointer {
-            transform: translateY(-10px) scale(1.05);
+            transform: translateY(-15px) scale(1.05); /* 增加往上的位移，避免遮擋 */
             box-shadow: 0 10px 20px rgba(0,0,0,0.4);
             z-index: 10;
         }
+
+        /* ====== 新增：出牌與收墩動畫 ====== */
+        @keyframes flyInCard {
+            0% { transform: translateY(150px) scale(0.3); opacity: 0; }
+            100% { transform: translateY(0) scale(1); opacity: 1; }
+        }
+        .animate-fly-in {
+            animation: flyInCard 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes collectTrickAnim {
+            0% { transform: translateY(0) scale(1); opacity: 1; filter: brightness(1); }
+            100% { transform: translateY(-200px) scale(0.2) rotate(360deg); opacity: 0; filter: brightness(2); }
+        }
+        .animate-collect {
+            animation: collectTrickAnim 0.5s ease-in forwards;
+        }
+        /* ================================== */
+
         #trick-area {
             box-shadow: inset 0 0 25px rgba(0,0,0,0.6);
             background: rgba(0, 0, 0, 0.25) !important;
@@ -89,7 +108,7 @@
             <p class="text-center mb-8 text-lg">歡迎，<span id="display-name" class="font-bold text-yellow-400"></span></p>
             
             <div class="space-y-6">
-                <button id="btn-create-room" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-4 rounded-xl transition shadow-lg">創建新房間</button>
+                <button id="btn-create-room" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-4 rounded-xl transition shadow-lg text-lg">創建新房間</button>
                 
                 <div class="relative flex py-2 items-center">
                     <div class="flex-grow border-t border-slate-600"></div>
@@ -97,9 +116,9 @@
                     <div class="flex-grow border-t border-slate-600"></div>
                 </div>
 
-                <div class="flex space-x-3">
-                    <input type="text" id="room-id-input" placeholder="輸入 5 碼 ID" class="flex-1 px-4 py-3 rounded-xl bg-slate-800 text-white border border-slate-600 focus:outline-none focus:border-blue-500 uppercase text-center text-lg tracking-widest" maxlength="5">
-                    <button id="btn-join-room" class="bg-slate-700 hover:bg-slate-600 border border-slate-500 text-white font-bold py-3 px-6 rounded-xl transition shrink-0">加入</button>
+                <div class="flex flex-col space-y-3">
+                    <input type="text" id="room-id-input" placeholder="輸入 5 碼 ID" class="w-full px-4 py-4 rounded-xl bg-slate-800 text-white border border-slate-600 focus:outline-none focus:border-blue-500 uppercase text-center text-lg tracking-widest" maxlength="5">
+                    <button id="btn-join-room" class="w-full bg-slate-700 hover:bg-slate-600 border border-slate-500 text-white font-bold py-4 px-6 rounded-xl transition shadow-lg text-lg">加入房間</button>
                 </div>
             </div>
         </div>
@@ -154,17 +173,7 @@
                 <!-- 核心桌面互動區 -->
                 <div id="table-area" class="hidden flex-col items-center justify-between w-full h-full p-2 pt-14 md:pt-16 pb-2 min-h-0">
                     
-                    <!-- 叫牌面板 (置中) -->
-                    <div id="bidding-area" class="absolute inset-0 z-20 hidden flex-col items-center justify-center bg-black/60 backdrop-blur-sm">
-                        <div class="bg-blue-900/90 p-4 md:p-6 rounded-2xl border border-blue-500/50 shadow-2xl flex flex-col items-center max-w-[95%]">
-                            <p class="text-yellow-400 font-bold mb-4 text-base md:text-lg">預測你能吃幾墩？</p>
-                            <div id="bidding-buttons" class="flex flex-wrap gap-2 md:gap-3 justify-center">
-                                <!-- 叫牌按鈕 -->
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 結算成績面板 (置中) -->
+                    <!-- 結算成績面板 (置中，覆蓋整個桌面) -->
                     <div id="round-result-area" class="absolute inset-0 z-20 hidden flex-col items-center justify-center bg-slate-900/95 p-4 overflow-y-auto">
                         <h3 class="text-yellow-400 font-black mb-4 md:mb-6 text-2xl md:text-3xl tracking-widest">回合結算</h3>
                         <div id="round-results-list" class="w-full max-w-lg space-y-2 md:space-y-3 mb-4 md:mb-6">
@@ -175,6 +184,17 @@
 
                     <!-- 中間打出的牌 (Trick Area) -->
                     <div id="trick-area" class="flex-1 w-full max-w-2xl rounded-2xl md:rounded-3xl border border-emerald-700/30 flex items-center justify-center relative min-h-[120px] mb-2">
+                        
+                        <!-- 叫牌面板 (改為只置中於出牌區，不遮擋手牌) -->
+                        <div id="bidding-area" class="absolute inset-0 z-20 hidden flex-col items-center justify-center bg-black/60 backdrop-blur-sm rounded-2xl md:rounded-3xl">
+                            <div class="bg-blue-900/90 p-4 md:p-6 rounded-2xl border border-blue-500/50 shadow-2xl flex flex-col items-center max-w-[95%]">
+                                <p class="text-yellow-400 font-bold mb-4 text-base md:text-lg">預測你能吃幾墩？</p>
+                                <div id="bidding-buttons" class="flex flex-wrap gap-2 md:gap-3 justify-center">
+                                    <!-- 叫牌按鈕 -->
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- 引牌標籤 -->
                         <div id="led-suit-indicator" class="absolute top-2 bg-slate-900/90 border border-yellow-500/70 text-yellow-300 px-3 py-0.5 md:py-1 rounded-full text-[10px] md:text-xs font-black shadow-lg hidden flex items-center gap-1 z-10">
                             <span>引牌:</span>
@@ -184,10 +204,10 @@
                         <div id="trick-cards" class="flex flex-wrap gap-2 md:gap-6 justify-center items-center h-full w-full p-2 relative"></div>
                     </div>
 
-                    <!-- 底部玩家手牌 -->
-                    <div class="shrink-0 w-full mt-auto pt-2 border-t border-slate-700/50 flex flex-col items-center">
+                    <!-- 底部玩家手牌 (修正切邊：加入 overflow-visible, 相對定位與充足的 pt-6 內留白) -->
+                    <div class="shrink-0 w-full mt-auto pt-2 border-t border-slate-700/50 flex flex-col items-center relative z-10">
                         <p class="mb-1 md:mb-2 text-slate-400 font-bold text-[10px] md:text-xs tracking-widest uppercase">你的手牌</p>
-                        <div id="my-cards" class="flex flex-wrap gap-1 md:gap-2 justify-center max-h-[28vh] overflow-y-auto w-full px-1 pb-1">
+                        <div id="my-cards" class="flex flex-wrap gap-1 md:gap-2 justify-center overflow-visible w-full px-2 pb-4 pt-6 min-h-[100px]">
                             <!-- 手牌動態生成 -->
                         </div>
                     </div>
@@ -219,6 +239,8 @@
         let unsubscribeRoom = null;
         let myPlayerName = "玩家";
         let trickResolveTimer = null;
+        window.prevTrick = []; // 紀錄上一墩以播放收墩動畫
+        window.prevTrickLength = 0; // 判斷是否為最新出牌
 
         // ====== 數學家名稱彩蛋 ======
         const mathematicians = ["高斯", "歐拉", "黎曼", "希爾伯特", "圖靈", "諾特", "牛頓", "萊布尼茲", "拉馬努金", "阿基米德"];
@@ -347,18 +369,18 @@
                     const existingPlayer = roomData.players.find(p => p.uid === currentUser.uid);
                     
                     if (!existingPlayer) {
-                        if (roomData.players.length >= 7) { showToast("房間滿員"); if(btn){btn.textContent="加入";btn.disabled=false;} return; }
-                        if (roomData.status !== 'waiting') { showToast("遊戲已開始"); if(btn){btn.textContent="加入";btn.disabled=false;} return; }
+                        if (roomData.players.length >= 7) { showToast("房間滿員"); if(btn){btn.textContent="加入房間";btn.disabled=false;} return; }
+                        if (roomData.status !== 'waiting') { showToast("遊戲已開始"); if(btn){btn.textContent="加入房間";btn.disabled=false;} return; }
                         await updateDoc(roomRef, { players: arrayUnion({ uid: currentUser.uid, name: myPlayerName, score: 0, isReady: true }) });
                     }
                     localStorage.setItem('savedRoomId', roomIdInput);
                     joinRoomLogic(roomIdInput);
                 } else {
                     showToast("找不到房間"); localStorage.removeItem('savedRoomId');
-                    if (btn) { btn.textContent = "加入"; btn.disabled = false; }
+                    if (btn) { btn.textContent = "加入房間"; btn.disabled = false; }
                     document.getElementById('lobby-screen').classList.remove('hidden'); document.getElementById('game-screen').classList.add('hidden');
                 }
-            } catch (error) { showToast("加入錯誤"); if(btn){btn.textContent="加入";btn.disabled=false;} }
+            } catch (error) { showToast("加入錯誤"); if(btn){btn.textContent="加入房間";btn.disabled=false;} }
         };
 
         const joinRoomLogic = (roomId) => {
@@ -419,7 +441,6 @@
             roomData.players.forEach(player => {
                 const li = document.createElement('li');
                 const isMe = player.uid === currentUser.uid;
-                // 改進的玩家列表條目：在手機上固定寬度以利滑動，桌機佔滿
                 li.className = `flex-shrink-0 min-w-[140px] lg:min-w-0 flex flex-col p-2 md:p-3 rounded-xl border ${isMe ? 'bg-emerald-900/40 border-emerald-500/50' : 'bg-slate-800 border-slate-700'}`;
                 
                 let hostBadge = player.uid === roomData.hostId ? '<span class="text-[8px] md:text-[10px] bg-yellow-600 text-white px-1.5 py-0.5 rounded-full ml-1">房主</span>' : '';
@@ -498,22 +519,63 @@
                         document.getElementById('led-suit-symbol').textContent = ledSuit;
                         document.getElementById('led-suit-symbol').className = `text-sm md:text-lg leading-none ${suitColors[ledSuit]}`;
 
+                        // 判斷最新打出的一張牌，給予飛入動畫
+                        let latestCardUid = null;
+                        if (roomData.currentTrick.length > window.prevTrickLength) {
+                            latestCardUid = roomData.currentTrick[roomData.currentTrick.length - 1].uid;
+                        }
+
                         document.getElementById('trick-cards').innerHTML = roomData.currentTrick.map((t, idx) => {
                             const pName = roomData.players.find(p => p.uid === t.uid)?.name || "未知";
-                            const rotate = (idx * 10) - ((roomData.currentTrick.length - 1) * 5); // 縮小旋轉角度以適應小螢幕
+                            const rotate = (idx * 10) - ((roomData.currentTrick.length - 1) * 5);
                             const halo = idx === 0 ? 'ring-2 ring-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.6)]' : '';
-                            return `<div class="flex flex-col items-center transition-all duration-300 absolute" style="transform: rotate(${rotate}deg) translateY(${Math.abs(rotate)*0.5}px) translateX(${rotate*1.5}px);">
-                                        <div class="relative ${halo} rounded-lg">${renderCard(t.card)}</div>
-                                        <span class="text-[8px] md:text-[10px] mt-1 font-bold bg-slate-900/80 px-1.5 py-0.5 rounded-full text-slate-300 shadow truncate max-w-[50px] md:max-w-[70px]">${pName}</span>
+                            const animClass = (t.uid === latestCardUid) ? 'animate-fly-in' : '';
+                            
+                            return `<div class="absolute transition-all duration-300 z-${idx}" style="transform: rotate(${rotate}deg) translateY(${Math.abs(rotate)*0.5}px) translateX(${rotate*1.5}px);">
+                                        <div class="flex flex-col items-center ${animClass}">
+                                            <div class="relative ${halo} rounded-lg">${renderCard(t.card)}</div>
+                                            <span class="text-[8px] md:text-[10px] mt-1 font-bold bg-slate-900/80 px-1.5 py-0.5 rounded-full text-slate-300 shadow truncate max-w-[50px] md:max-w-[70px]">${pName}</span>
+                                        </div>
                                     </div>`;
                         }).join('');
+                        window.prevTrick = roomData.currentTrick;
                     } else {
                         document.getElementById('led-suit-indicator').classList.add('hidden');
-                        document.getElementById('trick-cards').innerHTML = '<span class="text-emerald-500/30 font-bold tracking-widest text-xs md:text-sm">桌上沒牌...</span>';
+                        
+                        // 當桌面被清空且剛剛有牌時，播放殘影收墩動畫
+                        if (window.prevTrick.length > 0) {
+                            const collectHtml = window.prevTrick.map((t, idx) => {
+                                const pName = roomData.players.find(p => p.uid === t.uid)?.name || "未知";
+                                const rotate = (idx * 10) - ((window.prevTrick.length - 1) * 5);
+                                const halo = idx === 0 ? 'ring-2 ring-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.6)]' : '';
+                                return `<div class="absolute transition-all duration-300 z-${idx}" style="transform: rotate(${rotate}deg) translateY(${Math.abs(rotate)*0.5}px) translateX(${rotate*1.5}px);">
+                                            <div class="flex flex-col items-center animate-collect">
+                                                <div class="relative ${halo} rounded-lg">${renderCard(t.card)}</div>
+                                                <span class="text-[8px] md:text-[10px] mt-1 font-bold bg-slate-900/80 px-1.5 py-0.5 rounded-full text-slate-300 shadow truncate max-w-[50px] md:max-w-[70px]">${pName}</span>
+                                            </div>
+                                        </div>`;
+                            }).join('');
+                            
+                            document.getElementById('trick-cards').innerHTML = collectHtml;
+                            window.prevTrick = []; // 清空殘影記憶
+                            
+                            // 等待動畫播完後真正清空桌面
+                            setTimeout(() => {
+                                // 防呆檢查，確定這段時間沒有新出牌才清空
+                                if (!document.getElementById('led-suit-indicator').classList.contains('flex')) {
+                                    document.getElementById('trick-cards').innerHTML = '<span class="text-emerald-500/30 font-bold tracking-widest text-xs md:text-sm">桌上沒牌...</span>';
+                                }
+                            }, 450);
+                        } else {
+                            document.getElementById('trick-cards').innerHTML = '<span class="text-emerald-500/30 font-bold tracking-widest text-xs md:text-sm">桌上沒牌...</span>';
+                        }
                     }
+                    window.prevTrickLength = roomData.currentTrick ? roomData.currentTrick.length : 0;
                 } else {
                     document.getElementById('trick-cards').innerHTML = '';
                     document.getElementById('led-suit-indicator').classList.add('hidden');
+                    window.prevTrick = [];
+                    window.prevTrickLength = 0;
                 }
                 
                 document.getElementById('round-result-area').classList.add('hidden');
@@ -590,7 +652,7 @@
             currentRoomId = null;
             document.getElementById('game-screen').classList.add('hidden'); document.getElementById('game-screen').classList.remove('flex');
             document.getElementById('lobby-screen').classList.remove('hidden'); document.getElementById('lobby-screen').classList.add('flex');
-            document.getElementById('btn-join-room').textContent = "加入"; document.getElementById('btn-join-room').disabled = false;
+            document.getElementById('btn-join-room').textContent = "加入房間"; document.getElementById('btn-join-room').disabled = false;
             document.getElementById('btn-create-room').textContent = "創建新房間"; document.getElementById('btn-create-room').disabled = false;
         };
 
