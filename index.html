@@ -105,7 +105,13 @@
     <div id="lobby-screen" class="w-full h-full hidden flex-col items-center justify-center p-4">
         <div class="w-full max-w-md bg-slate-900/80 backdrop-blur-md rounded-2xl p-8 shadow-2xl border border-slate-700">
             <h2 class="text-2xl font-bold mb-6 text-center text-emerald-400">遊戲大廳</h2>
-            <p class="text-center mb-8 text-lg">歡迎，<span id="display-name" class="font-bold text-yellow-400"></span></p>
+            
+            <!-- 可更改暱稱的區域 -->
+            <div class="flex justify-center items-center gap-2 mb-8">
+                <span class="text-lg">歡迎，</span>
+                <input type="text" id="lobby-player-name" class="bg-slate-800 text-yellow-400 font-bold px-3 py-1.5 rounded-lg border border-slate-600 focus:outline-none focus:border-emerald-500 w-32 text-center text-lg shadow-inner" maxlength="10">
+                <button id="btn-update-name" class="bg-slate-700 hover:bg-slate-600 border border-slate-500 text-white text-sm font-bold px-3 py-1.5 rounded-lg transition shadow-md shrink-0">更改</button>
+            </div>
             
             <div class="space-y-6">
                 <button id="btn-create-room" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-4 rounded-xl transition shadow-lg text-lg">創建新房間</button>
@@ -239,8 +245,8 @@
         let unsubscribeRoom = null;
         let myPlayerName = "玩家";
         let trickResolveTimer = null;
-        window.prevTrick = []; // 紀錄上一墩以播放收墩動畫
-        window.prevTrickLength = 0; // 判斷是否為最新出牌
+        window.prevTrick = []; 
+        window.prevTrickLength = 0; 
 
         // ====== 數學家名稱彩蛋 ======
         const mathematicians = ["高斯", "歐拉", "黎曼", "希爾伯特", "圖靈", "諾特", "牛頓", "萊布尼茲", "拉馬努金", "阿基米德"];
@@ -290,7 +296,9 @@
                     currentUser = user;
                     myPlayerName = document.getElementById('player-name').value.trim() || getRandomMathName();
                     document.getElementById('player-name').value = myPlayerName;
-                    document.getElementById('display-name').textContent = myPlayerName;
+                    
+                    // 填入大廳的暱稱輸入框
+                    document.getElementById('lobby-player-name').value = myPlayerName;
                     
                     const savedRoomId = localStorage.getItem('savedRoomId');
                     if (savedRoomId) {
@@ -323,6 +331,25 @@
         };
 
         window.toggleRulesModal = () => document.getElementById('rules-modal').classList.toggle('hidden');
+
+        // ====== 更新大廳暱稱功能 ======
+        document.getElementById('btn-update-name').addEventListener('click', () => {
+            const input = document.getElementById('lobby-player-name');
+            const newName = input.value.trim();
+            if (newName) {
+                myPlayerName = newName;
+                localStorage.setItem('playerName', newName);
+                document.getElementById('player-name').value = newName;
+                showToast("✅ 暱稱已更新！");
+            } else {
+                input.value = myPlayerName;
+                showToast("⚠️ 暱稱不能為空！");
+            }
+        });
+        document.getElementById('lobby-player-name').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') document.getElementById('btn-update-name').click();
+        });
+        // ==============================
 
         const login = async () => {
             if (!auth) return;
@@ -371,6 +398,7 @@
                     if (!existingPlayer) {
                         if (roomData.players.length >= 7) { showToast("房間滿員"); if(btn){btn.textContent="加入房間";btn.disabled=false;} return; }
                         if (roomData.status !== 'waiting') { showToast("遊戲已開始"); if(btn){btn.textContent="加入房間";btn.disabled=false;} return; }
+                        // 加入時使用當前最新的 myPlayerName
                         await updateDoc(roomRef, { players: arrayUnion({ uid: currentUser.uid, name: myPlayerName, score: 0, isReady: true }) });
                     }
                     localStorage.setItem('savedRoomId', roomIdInput);
