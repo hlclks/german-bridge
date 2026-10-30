@@ -2,53 +2,54 @@
 <html lang="zh-HK">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>德國橋牌 - 網上多人連線</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
     <style>
         body { 
             font-family: 'Inter', sans-serif; 
-            /* 美化：改為經典的綠色撲克牌桌漸層背景 */
             background: radial-gradient(circle at center, #0f5132 0%, #064e3b 60%, #022c22 100%); 
             color: #f8fafc; 
-            min-height: 100vh;
+            overscroll-behavior: none; /* 防止手機下拉更新 */
         }
         .card-suit-hearts, .card-suit-diamonds { color: #dc2626 !important; }
         .card-suit-spades, .card-suit-clubs { color: #1e293b !important; }
         
-        /* 美化：更真實的卡牌外觀設計 */
         .playing-card { 
             background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
             border-radius: 0.5rem; 
-            width: 70px; 
-            height: 100px; 
+            /* 動態卡牌大小：手機最小寬 55px，最大寬 80px */
+            width: clamp(55px, 14vw, 80px); 
+            height: clamp(80px, 20vw, 115px); 
             display: flex; 
             flex-direction: column; 
-            align-items: center; 
-            justify-content: center; 
-            font-weight: bold; 
+            position: relative;
             box-shadow: 2px 4px 10px rgba(0,0,0,0.3); 
             user-select: none;
-            position: relative;
             transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s;
+            overflow: hidden;
         }
         .playing-card:hover.cursor-pointer {
             transform: translateY(-10px) scale(1.05);
             box-shadow: 0 10px 20px rgba(0,0,0,0.4);
             z-index: 10;
         }
-        /* 桌面區域特效 */
         #trick-area {
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
-            background: rgba(0, 0, 0, 0.2) !important;
+            box-shadow: inset 0 0 25px rgba(0,0,0,0.6);
+            background: rgba(0, 0, 0, 0.25) !important;
         }
+        
+        /* 隱藏原生滾動條，保持畫面乾淨 */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
     </style>
 </head>
-<body class="flex flex-col items-center justify-center p-4">
+<body class="flex flex-col m-0 p-0 w-full h-[100dvh] overflow-hidden">
 
     <!-- 全局提示框 -->
-    <div id="toast" class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-blue-600/90 backdrop-blur-sm text-white px-6 py-3 rounded-full shadow-2xl hidden transition-opacity duration-300 z-50 font-bold border border-blue-400"></div>
+    <div id="toast" class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-blue-600/90 backdrop-blur-sm text-white px-6 py-3 rounded-full shadow-2xl hidden transition-opacity duration-300 z-50 font-bold border border-blue-400 whitespace-nowrap"></div>
 
     <!-- 教學 Modal -->
     <div id="rules-modal" class="fixed inset-0 bg-black/80 hidden flex justify-center items-center z-50 p-4 backdrop-blur-sm">
@@ -69,123 +70,140 @@
     </div>
 
     <!-- 畫面 1: 登入/設定名稱 -->
-    <div id="login-screen" class="w-full max-w-md bg-slate-900/80 backdrop-blur-md rounded-2xl p-8 shadow-2xl text-center border border-slate-700">
-        <div class="flex justify-between items-center mb-8">
-            <h1 class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">德國橋牌 (Oh Hell)</h1>
-            <button onclick="window.toggleRulesModal()" class="bg-slate-700 hover:bg-slate-600 text-xs px-3 py-1.5 rounded-full text-slate-300 transition border border-slate-500">玩法教學</button>
+    <div id="login-screen" class="w-full h-full flex items-center justify-center p-4">
+        <div class="w-full max-w-md bg-slate-900/80 backdrop-blur-md rounded-2xl p-8 shadow-2xl text-center border border-slate-700">
+            <div class="flex justify-between items-center mb-8">
+                <h1 class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">德國橋牌 (Oh Hell)</h1>
+                <button onclick="window.toggleRulesModal()" class="bg-slate-700 hover:bg-slate-600 text-xs px-3 py-1.5 rounded-full text-slate-300 transition border border-slate-500 shrink-0 ml-2">教學</button>
+            </div>
+            <p class="text-slate-400 mb-6 font-medium">請輸入你的遊戲暱稱以開始</p>
+            <input type="text" id="player-name" placeholder="你的暱稱" class="w-full px-4 py-4 rounded-xl bg-slate-800 text-white border border-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 mb-6 text-lg text-center">
+            <button id="btn-login" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 px-4 rounded-xl transition shadow-[0_0_15px_rgba(5,150,105,0.4)] text-lg">進入大廳</button>
         </div>
-        <p class="text-slate-400 mb-6 font-medium">請輸入你的遊戲暱稱以開始</p>
-        <input type="text" id="player-name" placeholder="你的暱稱" class="w-full px-4 py-4 rounded-xl bg-slate-800 text-white border border-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 mb-6 text-lg text-center" value="玩家">
-        <button id="btn-login" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 px-4 rounded-xl transition shadow-[0_0_15px_rgba(5,150,105,0.4)] text-lg">進入大廳</button>
     </div>
 
     <!-- 畫面 2: 大廳 (創建或加入房間) -->
-    <div id="lobby-screen" class="w-full max-w-md bg-slate-900/80 backdrop-blur-md rounded-2xl p-8 shadow-2xl hidden border border-slate-700">
-        <h2 class="text-2xl font-bold mb-6 text-center text-emerald-400">遊戲大廳</h2>
-        <p class="text-center mb-8 text-lg">歡迎，<span id="display-name" class="font-bold text-yellow-400"></span></p>
-        
-        <div class="space-y-6">
-            <button id="btn-create-room" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-4 rounded-xl transition shadow-lg">創建新房間</button>
+    <div id="lobby-screen" class="w-full h-full hidden flex-col items-center justify-center p-4">
+        <div class="w-full max-w-md bg-slate-900/80 backdrop-blur-md rounded-2xl p-8 shadow-2xl border border-slate-700">
+            <h2 class="text-2xl font-bold mb-6 text-center text-emerald-400">遊戲大廳</h2>
+            <p class="text-center mb-8 text-lg">歡迎，<span id="display-name" class="font-bold text-yellow-400"></span></p>
             
-            <div class="relative flex py-2 items-center">
-                <div class="flex-grow border-t border-slate-600"></div>
-                <span class="flex-shrink-0 mx-4 text-slate-500 font-bold text-sm">或加入現有房間</span>
-                <div class="flex-grow border-t border-slate-600"></div>
-            </div>
+            <div class="space-y-6">
+                <button id="btn-create-room" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-4 rounded-xl transition shadow-lg">創建新房間</button>
+                
+                <div class="relative flex py-2 items-center">
+                    <div class="flex-grow border-t border-slate-600"></div>
+                    <span class="flex-shrink-0 mx-4 text-slate-500 font-bold text-sm">或加入現有房間</span>
+                    <div class="flex-grow border-t border-slate-600"></div>
+                </div>
 
-            <div class="flex space-x-3">
-                <input type="text" id="room-id-input" placeholder="輸入 5 碼 ID" class="flex-1 px-4 py-3 rounded-xl bg-slate-800 text-white border border-slate-600 focus:outline-none focus:border-blue-500 uppercase text-center text-lg tracking-widest" maxlength="5">
-                <button id="btn-join-room" class="bg-slate-700 hover:bg-slate-600 border border-slate-500 text-white font-bold py-3 px-6 rounded-xl transition">加入</button>
+                <div class="flex space-x-3">
+                    <input type="text" id="room-id-input" placeholder="輸入 5 碼 ID" class="flex-1 px-4 py-3 rounded-xl bg-slate-800 text-white border border-slate-600 focus:outline-none focus:border-blue-500 uppercase text-center text-lg tracking-widest" maxlength="5">
+                    <button id="btn-join-room" class="bg-slate-700 hover:bg-slate-600 border border-slate-500 text-white font-bold py-3 px-6 rounded-xl transition shrink-0">加入</button>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- 畫面 3: 遊戲房間 -->
-    <div id="game-screen" class="w-full max-w-5xl hidden flex-col items-center">
-        <div class="w-full flex justify-between items-center mb-4 bg-slate-900/80 backdrop-blur-md p-4 rounded-xl shadow-lg border border-slate-700">
-            <div class="flex items-center gap-4">
-                <h2 class="text-lg font-bold text-slate-300 flex items-center">房間 ID: <span id="current-room-id" class="ml-2 text-emerald-400 tracking-widest cursor-pointer bg-slate-800 px-3 py-1 rounded border border-slate-600 hover:bg-slate-700 transition" onclick="window.copyRoomId()"></span></h2>
-                <button onclick="window.toggleRulesModal()" class="bg-slate-700 hover:bg-slate-600 text-xs px-3 py-1.5 rounded-full text-slate-300 transition hidden sm:block border border-slate-500">玩法規則</button>
+    <!-- 畫面 3: 全螢幕遊戲房間 -->
+    <div id="game-screen" class="w-full h-full hidden flex-col p-2 md:p-4 gap-2">
+        <!-- 頂部控制列 -->
+        <div class="shrink-0 w-full flex justify-between items-center bg-slate-900/80 backdrop-blur-md p-2 md:p-3 rounded-xl shadow-lg border border-slate-700">
+            <div class="flex items-center gap-2 md:gap-4">
+                <h2 class="text-sm md:text-base font-bold text-slate-300 flex items-center whitespace-nowrap">ID: 
+                    <span id="current-room-id" class="ml-1 md:ml-2 text-emerald-400 tracking-widest cursor-pointer bg-slate-800 px-2 py-1 rounded border border-slate-600 hover:bg-slate-700 transition" onclick="window.copyRoomId()"></span>
+                </h2>
+                <button onclick="window.toggleRulesModal()" class="bg-slate-700 hover:bg-slate-600 text-[10px] md:text-xs px-2 md:px-3 py-1 md:py-1.5 rounded-full text-slate-300 transition border border-slate-500">教學</button>
             </div>
-            <button id="btn-leave-room" class="bg-red-600/80 hover:bg-red-500 text-white px-5 py-2 rounded-lg text-sm font-bold transition">離開房間</button>
+            <button id="btn-leave-room" class="bg-red-600/80 hover:bg-red-500 text-white px-3 md:px-5 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-bold transition">離開</button>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 w-full">
-            <!-- 玩家列表 (左側) -->
-            <div class="bg-slate-900/80 backdrop-blur-md rounded-xl p-5 shadow-lg lg:col-span-1 border border-slate-700 flex flex-col justify-between max-h-[600px] overflow-y-auto">
-                <div>
-                    <h3 class="font-bold text-lg mb-4 border-b border-slate-600 pb-2 text-emerald-400">玩家 (<span id="player-count">0</span>/7)</h3>
-                    <ul id="players-list" class="space-y-2">
-                        <!-- 玩家列表 -->
-                    </ul>
-                </div>
+        <!-- 遊戲主體區域 (利用 flex-1 填滿剩餘高度) -->
+        <div class="flex-1 flex flex-col lg:flex-row gap-2 min-h-0 w-full">
+            
+            <!-- 玩家列表區塊 (手機: 橫向滑動, 電腦: 側邊直欄) -->
+            <div class="shrink-0 lg:w-64 bg-slate-900/80 backdrop-blur-md rounded-xl p-2 md:p-4 shadow-lg border border-slate-700 flex flex-col max-h-[140px] lg:max-h-none">
+                <h3 class="font-bold text-sm md:text-base mb-2 border-b border-slate-600 pb-1 text-emerald-400 shrink-0">玩家 (<span id="player-count">0</span>/7)</h3>
+                
+                <!-- 玩家列表容器 -->
+                <ul id="players-list" class="flex lg:flex-col overflow-x-auto lg:overflow-y-auto gap-2 pb-1 lg:pb-0 flex-1 items-start lg:items-stretch">
+                    <!-- 玩家列表動態生成 -->
+                </ul>
 
-                <!-- 房主控制面板 -->
-                <div id="host-controls" class="mt-6 pt-4 border-t border-slate-600 hidden">
-                    <button id="btn-start-game" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-xl transition shadow-lg animate-pulse">開始遊戲 (發牌)</button>
+                <!-- 房主專用按鈕區 (固定在底部或右側) -->
+                <div id="host-controls" class="shrink-0 mt-2 lg:mt-4 lg:pt-4 lg:border-t border-slate-600 hidden">
+                    <button id="btn-start-game" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg md:rounded-xl transition shadow-lg text-sm md:text-base animate-pulse whitespace-nowrap">開始遊戲 (發牌)</button>
                 </div>
             </div>
 
-            <!-- 遊戲主畫面區塊 (右側) -->
-            <div class="bg-slate-900/60 backdrop-blur-sm rounded-xl p-6 shadow-2xl lg:col-span-3 border border-slate-700 flex flex-col items-center justify-center min-h-[500px] relative">
+            <!-- 牌桌與出牌區 (佔滿最大空間) -->
+            <div class="flex-1 bg-slate-900/60 backdrop-blur-sm rounded-xl border border-slate-700 relative flex flex-col overflow-hidden min-h-[300px]">
                 
-                <div class="absolute top-4 left-6 text-left">
-                     <h3 class="text-2xl font-black tracking-wide drop-shadow-md text-slate-300" id="game-status-text">等待玩家加入...</h3>
-                     <p class="text-slate-400 font-medium" id="game-substatus-text">邀請朋友加入房間</p>
+                <!-- 狀態文字 (左上) -->
+                <div class="absolute top-2 left-3 md:top-4 md:left-6 text-left z-10 pointer-events-none">
+                     <h3 class="text-lg md:text-2xl font-black tracking-wide drop-shadow-md text-slate-300" id="game-status-text">等待玩家加入...</h3>
+                     <p class="text-xs md:text-sm text-slate-400 font-medium" id="game-substatus-text">邀請朋友加入房間</p>
                 </div>
 
-                <!-- 王牌顯示 (右上角) -->
-                <div id="trump-area" class="absolute top-4 right-6 flex flex-col items-center hidden">
-                    <p class="text-xs text-yellow-400 font-bold mb-1 tracking-widest uppercase">本局王牌</p>
-                    <div id="trump-card-display" class="transform scale-75 origin-top"></div>
+                <!-- 王牌顯示 (右上) -->
+                <div id="trump-area" class="absolute top-2 right-3 md:top-4 md:right-6 flex flex-col items-end md:items-center hidden z-10 pointer-events-none">
+                    <p class="text-[10px] md:text-xs text-yellow-400 font-bold mb-1 tracking-widest uppercase bg-black/30 px-2 rounded-full md:bg-transparent">王牌</p>
+                    <div id="trump-card-display" class="transform scale-[0.6] md:scale-75 origin-top-right md:origin-top shadow-lg"></div>
                 </div>
                 
-                <!-- 遊戲牌桌展示 -->
-                <div id="table-area" class="hidden flex-col items-center w-full mt-16">
+                <!-- 核心桌面互動區 -->
+                <div id="table-area" class="hidden flex-col items-center justify-between w-full h-full p-2 pt-14 md:pt-16 pb-2 min-h-0">
                     
-                    <div id="bidding-area" class="mb-8 hidden flex-col items-center w-full max-w-md bg-blue-900/40 p-6 rounded-2xl border border-blue-500/50 shadow-2xl backdrop-blur-md">
-                        <p class="text-yellow-400 font-bold mb-4 text-lg">預測你能吃幾墩？</p>
-                        <div id="bidding-buttons" class="flex flex-wrap gap-3 justify-center">
-                            <!-- 叫牌按鈕 -->
+                    <!-- 叫牌面板 (置中) -->
+                    <div id="bidding-area" class="absolute inset-0 z-20 hidden flex-col items-center justify-center bg-black/60 backdrop-blur-sm">
+                        <div class="bg-blue-900/90 p-4 md:p-6 rounded-2xl border border-blue-500/50 shadow-2xl flex flex-col items-center max-w-[95%]">
+                            <p class="text-yellow-400 font-bold mb-4 text-base md:text-lg">預測你能吃幾墩？</p>
+                            <div id="bidding-buttons" class="flex flex-wrap gap-2 md:gap-3 justify-center">
+                                <!-- 叫牌按鈕 -->
+                            </div>
                         </div>
                     </div>
 
-                    <!-- 桌面出牌區 -->
-                    <div id="trick-area" class="mb-8 hidden flex-col items-center w-full max-w-2xl rounded-full border border-emerald-700/50 min-h-[220px] justify-center relative">
-                        <!-- 桌上的牌會圍繞中心點顯示 -->
-                        <div id="trick-cards" class="flex flex-wrap gap-4 justify-center items-center h-full w-full p-8">
-                            <!-- 打出的牌 -->
+                    <!-- 結算成績面板 (置中) -->
+                    <div id="round-result-area" class="absolute inset-0 z-20 hidden flex-col items-center justify-center bg-slate-900/95 p-4 overflow-y-auto">
+                        <h3 class="text-yellow-400 font-black mb-4 md:mb-6 text-2xl md:text-3xl tracking-widest">回合結算</h3>
+                        <div id="round-results-list" class="w-full max-w-lg space-y-2 md:space-y-3 mb-4 md:mb-6">
+                            <!-- 成績動態生成 -->
+                        </div>
+                        <button id="btn-next-round" class="hidden bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-8 rounded-xl transition shadow-lg text-base md:text-lg">開始下一回合</button>
+                    </div>
+
+                    <!-- 中間打出的牌 (Trick Area) -->
+                    <div id="trick-area" class="flex-1 w-full max-w-2xl rounded-2xl md:rounded-3xl border border-emerald-700/30 flex items-center justify-center relative min-h-[120px] mb-2">
+                        <!-- 引牌標籤 -->
+                        <div id="led-suit-indicator" class="absolute top-2 bg-slate-900/90 border border-yellow-500/70 text-yellow-300 px-3 py-0.5 md:py-1 rounded-full text-[10px] md:text-xs font-black shadow-lg hidden flex items-center gap-1 z-10">
+                            <span>引牌:</span>
+                            <span id="led-suit-symbol" class="text-sm md:text-lg leading-none"></span>
+                        </div>
+                        <!-- 桌上的牌 -->
+                        <div id="trick-cards" class="flex flex-wrap gap-2 md:gap-6 justify-center items-center h-full w-full p-2 relative"></div>
+                    </div>
+
+                    <!-- 底部玩家手牌 -->
+                    <div class="shrink-0 w-full mt-auto pt-2 border-t border-slate-700/50 flex flex-col items-center">
+                        <p class="mb-1 md:mb-2 text-slate-400 font-bold text-[10px] md:text-xs tracking-widest uppercase">你的手牌</p>
+                        <div id="my-cards" class="flex flex-wrap gap-1 md:gap-2 justify-center max-h-[28vh] overflow-y-auto w-full px-1 pb-1">
+                            <!-- 手牌動態生成 -->
                         </div>
                     </div>
 
-                    <!-- 回合結算區 -->
-                    <div id="round-result-area" class="mb-6 hidden flex-col items-center w-full bg-slate-900/90 p-8 rounded-2xl border border-yellow-500/30 shadow-2xl z-20">
-                        <h3 class="text-yellow-400 font-black mb-6 text-3xl tracking-widest">回合結算</h3>
-                        <div id="round-results-list" class="w-full max-w-lg space-y-3 mb-6">
-                            <!-- 結算成績 -->
-                        </div>
-                        <button id="btn-next-round" class="hidden bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-8 rounded-xl transition shadow-lg text-lg">開始下一回合</button>
-                    </div>
-
-                    <div class="w-full mt-auto pt-4 flex flex-col items-center">
-                         <p class="mb-3 text-slate-300 font-bold text-sm tracking-widest">你的手牌</p>
-                        <div id="my-cards" class="flex flex-wrap gap-2 justify-center">
-                            <!-- 手牌 -->
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Firebase 模組化 SDK 與 遊戲邏輯 -->
+    <!-- Firebase SDK 與 遊戲邏輯 -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const appId = 'my-german-bridge'; 
-        // 替換為你的 Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyBXguPTHpAEJyv8BVXZItIvut5FPIMNf5o",
             authDomain: "german-bridge-80e20.firebaseapp.com",
@@ -200,8 +218,23 @@
         let currentRoomId = null;
         let unsubscribeRoom = null;
         let myPlayerName = "玩家";
+        let trickResolveTimer = null;
 
-        /* --- 音效合成系統 (Web Audio API) --- */
+        // ====== 數學家名稱彩蛋 ======
+        const mathematicians = ["高斯", "歐拉", "黎曼", "希爾伯特", "圖靈", "諾特", "牛頓", "萊布尼茲", "拉馬努金", "阿基米德"];
+        const playerNameInput = document.getElementById('player-name');
+        let isAutoName = false;
+
+        const getRandomMathName = () => mathematicians[Math.floor(Math.random() * mathematicians.length)];
+        const savedName = localStorage.getItem('playerName');
+        if (savedName) { playerNameInput.value = savedName; isAutoName = false; } 
+        else { playerNameInput.value = getRandomMathName(); isAutoName = true; }
+
+        playerNameInput.addEventListener('focus', (e) => { if (isAutoName) { e.target.value = ''; isAutoName = false; } });
+        playerNameInput.addEventListener('blur', (e) => { if (e.target.value.trim() === '') { e.target.value = getRandomMathName(); isAutoName = true; } });
+        // ========================
+
+        // ====== 簡易音效引擎 ======
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         window.playSound = (type) => {
             if(audioCtx.state === 'suspended') audioCtx.resume();
@@ -211,32 +244,17 @@
             gainNode.connect(audioCtx.destination);
 
             if (type === 'card') {
-                // 發牌/出牌的清脆聲 (滑動聲)
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(800, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
-                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-                osc.start();
-                osc.stop(audioCtx.currentTime + 0.1);
+                osc.type = 'sine'; osc.frequency.setValueAtTime(800, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
+                gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.1);
             } else if (type === 'error') {
-                // 錯誤提示音 (低頻 Buzz)
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-                gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
-                gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.3);
-                osc.start();
-                osc.stop(audioCtx.currentTime + 0.3);
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime); gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.3);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.3);
             } else if (type === 'win') {
-                // 贏得一墩的音效 (和弦提示)
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(440, audioCtx.currentTime); // A4
-                osc.frequency.setValueAtTime(554, audioCtx.currentTime + 0.1); // C#5
-                osc.frequency.setValueAtTime(659, audioCtx.currentTime + 0.2); // E5
-                gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
-                gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5);
-                osc.start();
-                osc.stop(audioCtx.currentTime + 0.5);
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(440, audioCtx.currentTime); osc.frequency.setValueAtTime(659, audioCtx.currentTime + 0.15); 
+                gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime); gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.4);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.4);
             }
         };
 
@@ -244,100 +262,84 @@
             app = initializeApp(firebaseConfig);
             db = getFirestore(app);
             auth = getAuth(app);
+            
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    currentUser = user;
+                    myPlayerName = document.getElementById('player-name').value.trim() || getRandomMathName();
+                    document.getElementById('player-name').value = myPlayerName;
+                    document.getElementById('display-name').textContent = myPlayerName;
+                    
+                    const savedRoomId = localStorage.getItem('savedRoomId');
+                    if (savedRoomId) {
+                        document.getElementById('login-screen').classList.add('hidden');
+                        document.getElementById('room-id-input').value = savedRoomId;
+                        showToast("恢復連線中...");
+                        await joinRoom(savedRoomId);
+                    } else {
+                        document.getElementById('login-screen').classList.add('hidden');
+                        document.getElementById('lobby-screen').classList.remove('hidden');
+                        document.getElementById('lobby-screen').classList.add('flex');
+                    }
+                } else {
+                    document.getElementById('login-screen').classList.remove('hidden');
+                    document.getElementById('lobby-screen').classList.add('hidden');
+                    document.getElementById('game-screen').classList.add('hidden');
+                }
+            });
         }
 
         window.showToast = (msg, duration = 3000) => {
             const toast = document.getElementById('toast');
-            toast.textContent = msg;
-            toast.classList.remove('hidden');
+            toast.textContent = msg; toast.classList.remove('hidden');
             setTimeout(() => toast.classList.add('hidden'), duration);
         };
 
         window.copyRoomId = () => {
             if(!currentRoomId) return;
-            navigator.clipboard.writeText(currentRoomId).then(() => {
-                showToast("✅ 房間 ID 已複製！");
-            }).catch(() => {
-                showToast("複製失敗，請手動複製");
-            });
+            navigator.clipboard.writeText(currentRoomId).then(() => showToast("✅ 房間 ID 已複製！"));
         };
 
-        window.toggleRulesModal = () => {
-            const modal = document.getElementById('rules-modal');
-            modal.classList.toggle('hidden');
-        };
+        window.toggleRulesModal = () => document.getElementById('rules-modal').classList.toggle('hidden');
 
         const login = async () => {
-            if (!auth) {
-                showToast("Firebase 未設定，無法連線。");
-                return;
-            }
-            
-            myPlayerName = document.getElementById('player-name').value.trim() || "匿名玩家";
-            document.getElementById('btn-login').textContent = "連線中...";
-            document.getElementById('btn-login').disabled = true;
+            if (!auth) return;
+            myPlayerName = document.getElementById('player-name').value.trim() || getRandomMathName();
+            localStorage.setItem('playerName', myPlayerName);
+            document.getElementById('btn-login').textContent = "連線中..."; document.getElementById('btn-login').disabled = true;
 
-            try {
-                await signInAnonymously(auth);
-                currentUser = auth.currentUser;
-                document.getElementById('display-name').textContent = myPlayerName;
-                
-                document.getElementById('login-screen').classList.add('hidden');
-                document.getElementById('lobby-screen').classList.remove('hidden');
-                window.playSound('card'); // 登入音效
-            } catch (error) {
-                console.error("登入失敗:", error);
-                showToast("登入失敗，請重試。");
-                document.getElementById('btn-login').textContent = "進入大廳";
-                document.getElementById('btn-login').disabled = false;
-            }
+            try { await signInAnonymously(auth); window.playSound('card'); } 
+            catch (error) { showToast("登入失敗"); document.getElementById('btn-login').textContent = "進入大廳"; document.getElementById('btn-login').disabled = false; }
         };
 
         const createRoom = async () => {
             if (!currentUser) return;
             const btn = document.getElementById('btn-create-room');
-            btn.textContent = "創建中...";
-            btn.disabled = true;
+            btn.textContent = "創建中..."; btn.disabled = true;
 
             const roomId = Math.random().toString(36).substring(2, 7).toUpperCase();
             const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
 
-            const initialData = {
-                status: 'waiting',
-                hostId: currentUser.uid,
-                players: [{
-                    uid: currentUser.uid,
-                    name: myPlayerName,
-                    score: 0,
-                    isReady: true
-                }],
-                currentRound: 0,
-                createdAt: new Date().toISOString()
-            };
-
             try {
-                await setDoc(roomRef, initialData);
+                await setDoc(roomRef, {
+                    status: 'waiting', hostId: currentUser.uid,
+                    players: [{ uid: currentUser.uid, name: myPlayerName, score: 0, isReady: true }],
+                    currentRound: 0, createdAt: new Date().toISOString()
+                });
+                localStorage.setItem('savedRoomId', roomId);
                 joinRoomLogic(roomId);
             } catch (error) {
-                console.error("創建房間失敗:", error);
-                showToast("創建房間失敗");
-                btn.textContent = "創建新房間";
-                btn.disabled = false;
+                showToast("創建失敗"); btn.textContent = "創建新房間"; btn.disabled = false;
             }
         };
 
-        const joinRoom = async () => {
-            const roomId = document.getElementById('room-id-input').value.trim().toUpperCase();
-            if (!roomId) {
-                showToast("請輸入房間 ID");
-                return;
-            }
-            
+        const joinRoom = async (autoRoomId = null) => {
+            const roomIdInput = typeof autoRoomId === 'string' ? autoRoomId : document.getElementById('room-id-input').value.trim().toUpperCase();
+            if (!roomIdInput) return;
             const btn = document.getElementById('btn-join-room');
-            btn.textContent = "...";
-            btn.disabled = true;
+            if (btn) { btn.textContent = "..."; btn.disabled = true; }
 
-            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
+            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomIdInput);
             try {
                 const roomSnap = await getDoc(roomRef);
                 if (roomSnap.exists()) {
@@ -345,47 +347,25 @@
                     const existingPlayer = roomData.players.find(p => p.uid === currentUser.uid);
                     
                     if (!existingPlayer) {
-                        if (roomData.players.length >= 7) {
-                            showToast("房間已滿 (最多7人)");
-                            btn.textContent = "加入";
-                            btn.disabled = false;
-                            return;
-                        }
-                        if (roomData.status !== 'waiting') {
-                            showToast("遊戲已經開始了！");
-                            btn.textContent = "加入";
-                            btn.disabled = false;
-                            return;
-                        }
-                        
-                        await updateDoc(roomRef, {
-                            players: arrayUnion({
-                                uid: currentUser.uid,
-                                name: myPlayerName,
-                                score: 0,
-                                isReady: true
-                            })
-                        });
+                        if (roomData.players.length >= 7) { showToast("房間滿員"); if(btn){btn.textContent="加入";btn.disabled=false;} return; }
+                        if (roomData.status !== 'waiting') { showToast("遊戲已開始"); if(btn){btn.textContent="加入";btn.disabled=false;} return; }
+                        await updateDoc(roomRef, { players: arrayUnion({ uid: currentUser.uid, name: myPlayerName, score: 0, isReady: true }) });
                     }
-                    joinRoomLogic(roomId);
+                    localStorage.setItem('savedRoomId', roomIdInput);
+                    joinRoomLogic(roomIdInput);
                 } else {
-                    showToast("找不到該房間");
-                    btn.textContent = "加入";
-                    btn.disabled = false;
+                    showToast("找不到房間"); localStorage.removeItem('savedRoomId');
+                    if (btn) { btn.textContent = "加入"; btn.disabled = false; }
+                    document.getElementById('lobby-screen').classList.remove('hidden'); document.getElementById('game-screen').classList.add('hidden');
                 }
-            } catch (error) {
-                console.error("加入房間失敗:", error);
-                showToast("加入房間發生錯誤");
-                btn.textContent = "加入";
-                btn.disabled = false;
-            }
+            } catch (error) { showToast("加入錯誤"); if(btn){btn.textContent="加入";btn.disabled=false;} }
         };
 
         const joinRoomLogic = (roomId) => {
             currentRoomId = roomId;
             document.getElementById('current-room-id').textContent = roomId;
-            
             document.getElementById('lobby-screen').classList.add('hidden');
+            document.getElementById('lobby-screen').classList.remove('flex');
             document.getElementById('game-screen').classList.remove('hidden');
             document.getElementById('game-screen').classList.add('flex');
             window.playSound('card');
@@ -393,606 +373,362 @@
             const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
             
             unsubscribeRoom = onSnapshot(roomRef, (docSnap) => {
-                if (!docSnap.exists()) {
-                    showToast("房間已被關閉");
-                    leaveRoom();
-                    return;
-                }
+                if (!docSnap.exists()) { showToast("房間已關閉"); leaveRoom(); return; }
                 const data = docSnap.data();
+                if (currentUser && !data.players.some(p => p.uid === currentUser.uid)) { showToast("被移出房間"); leaveRoom(); return; }
+                if (data.status === 'waiting' && document.getElementById('table-area') && !document.getElementById('table-area').classList.contains('hidden')) {
+                    showToast("⚠️ 有玩家離開，本局中斷。"); window.playSound('error');
+                }
                 updateGameUI(data);
-            }, (error) => {
-                console.error("監聽房間失敗:", error);
+                handleDecentralizedResolution(data);
             });
         };
 
+        window.kickPlayer = async (kickedUid) => {
+            if (!currentUser || !currentRoomId) return;
+            if (!confirm("確定要將此玩家踢出房間嗎？")) return;
+            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomId);
+            try {
+                const roomSnap = await getDoc(roomRef); if (!roomSnap.exists()) return;
+                const data = roomSnap.data(); if (data.hostId !== currentUser.uid) return;
+                const updatedPlayers = data.players.filter(p => p.uid !== kickedUid);
+                if (data.status === 'waiting') await updateDoc(roomRef, { players: updatedPlayers });
+                else await updateDoc(roomRef, { players: updatedPlayers, status: 'waiting', currentRound: 0, bids: {}, hands: {}, tricksWon: {}, currentTrick: [], turnOrder: [], currentTurnIndex: 0 });
+            } catch (e) { showToast("踢出失敗"); }
+        };
+
+        const handleDecentralizedResolution = (roomData) => {
+            if (roomData.status === 'playing_tricks' && roomData.currentTurnIndex === -1 && roomData.currentTrick && roomData.currentTrick.length === roomData.turnOrder.length) {
+                const lastPlayerUid = roomData.currentTrick[roomData.currentTrick.length - 1].uid;
+                if (currentUser.uid === lastPlayerUid) {
+                    if (!trickResolveTimer) trickResolveTimer = setTimeout(() => window.resolveTrick(currentRoomId, roomData.currentTrick, roomData.trumpCard), 2500);
+                } else {
+                    const myIndex = roomData.players.findIndex(p => p.uid === currentUser.uid);
+                    if (!trickResolveTimer) trickResolveTimer = setTimeout(() => window.resolveTrick(currentRoomId, roomData.currentTrick, roomData.trumpCard), 6000 + (myIndex * 1000));
+                }
+            } else {
+                if (trickResolveTimer) { clearTimeout(trickResolveTimer); trickResolveTimer = null; }
+            }
+        };
+
         const updateGameUI = (roomData) => {
-            const playersList = document.getElementById('players-list');
-            playersList.innerHTML = '';
+            const playersList = document.getElementById('players-list'); playersList.innerHTML = '';
             document.getElementById('player-count').textContent = roomData.players.length;
-            
-            let isHost = false;
+            const isHost = (currentUser && roomData.hostId === currentUser.uid);
 
             roomData.players.forEach(player => {
                 const li = document.createElement('li');
                 const isMe = player.uid === currentUser.uid;
-                li.className = `flex flex-col p-3 rounded-xl border ${isMe ? 'bg-emerald-900/40 border-emerald-500/50' : 'bg-slate-800 border-slate-700'}`;
+                // 改進的玩家列表條目：在手機上固定寬度以利滑動，桌機佔滿
+                li.className = `flex-shrink-0 min-w-[140px] lg:min-w-0 flex flex-col p-2 md:p-3 rounded-xl border ${isMe ? 'bg-emerald-900/40 border-emerald-500/50' : 'bg-slate-800 border-slate-700'}`;
                 
-                let hostBadge = player.uid === roomData.hostId ? '<span class="text-[10px] bg-yellow-600 text-white px-2 py-0.5 rounded-full ml-2 shadow">房主</span>' : '';
+                let hostBadge = player.uid === roomData.hostId ? '<span class="text-[8px] md:text-[10px] bg-yellow-600 text-white px-1.5 py-0.5 rounded-full ml-1">房主</span>' : '';
+                let kickBtn = (isHost && !isMe) ? `<button onclick="window.kickPlayer('${player.uid}')" class="ml-auto bg-red-600/80 text-white text-[10px] px-1.5 py-0.5 rounded" title="踢出">踢</button>` : '';
                 
-                if (isMe && player.uid === roomData.hostId) isHost = true;
-
                 let statsHtml = "";
                 if (roomData.status !== 'waiting') {
                     const bid = roomData.bids && roomData.bids[player.uid] !== undefined ? roomData.bids[player.uid] : '-';
                     const won = roomData.tricksWon && roomData.tricksWon[player.uid] !== undefined ? roomData.tricksWon[player.uid] : '0';
                     const isTurn = roomData.turnOrder && roomData.turnOrder[roomData.currentTurnIndex] === player.uid;
-                    const turnIndicator = isTurn ? `<span class="absolute -left-2 top-3 w-2 h-2 rounded-full bg-yellow-400 animate-ping"></span>` : '';
-                    
-                    statsHtml = `
-                        <div class="flex justify-between items-center mt-2 text-xs relative">
-                            ${turnIndicator}
-                            <span class="text-slate-400 bg-slate-900/50 px-2 py-1 rounded">叫牌: <b class="text-white">${bid}</b></span>
-                            <span class="text-emerald-400 bg-emerald-900/20 px-2 py-1 rounded border border-emerald-800/50">已吃: <b class="text-white">${won}</b></span>
-                        </div>
-                    `;
+                    const turnIndicator = isTurn ? `<span class="absolute -left-1 top-2 w-2 h-2 rounded-full bg-yellow-400 animate-ping"></span>` : '';
+                    statsHtml = `<div class="flex justify-between items-center mt-1.5 text-[10px] md:text-xs relative">
+                                    ${turnIndicator}
+                                    <span class="text-slate-400 bg-slate-900/50 px-1.5 py-0.5 rounded">叫: <b class="text-white">${bid}</b></span>
+                                    <span class="text-emerald-400 bg-emerald-900/20 px-1.5 py-0.5 rounded border border-emerald-800/50">吃: <b class="text-white">${won}</b></span>
+                                 </div>`;
                 }
 
-                li.innerHTML = `
-                    <div class="flex justify-between items-center w-full">
-                        <div class="flex items-center">
-                            <span class="font-bold text-slate-100">${player.name}</span>
-                            ${hostBadge}
-                        </div>
-                        <span class="text-sm text-yellow-400 font-black bg-slate-900 px-2 py-1 rounded-lg border border-yellow-900/50">${player.score} pt</span>
-                    </div>
-                    ${statsHtml}
-                `;
+                li.innerHTML = `<div class="flex justify-between items-center w-full">
+                                    <div class="flex items-center w-full truncate">
+                                        <span class="font-bold text-slate-100 text-xs md:text-sm truncate">${player.name}</span>
+                                        ${hostBadge} ${kickBtn}
+                                    </div>
+                                    <span class="text-[10px] md:text-xs text-yellow-400 font-black bg-slate-900 px-1.5 py-0.5 rounded border border-yellow-900/50 ml-1 whitespace-nowrap">${player.score}</span>
+                                </div>${statsHtml}`;
                 playersList.appendChild(li);
             });
 
             const hostControls = document.getElementById('host-controls');
-            if (isHost && roomData.status === 'waiting') {
-                hostControls.classList.remove('hidden');
-            } else {
-                hostControls.classList.add('hidden');
-            }
+            if (isHost && roomData.status === 'waiting') { hostControls.classList.remove('hidden'); hostControls.classList.add('flex', 'lg:block'); } 
+            else { hostControls.classList.add('hidden'); hostControls.classList.remove('flex', 'lg:block'); }
 
-            const statusText = document.getElementById('game-status-text');
-            const substatusText = document.getElementById('game-substatus-text');
             const tableArea = document.getElementById('table-area');
             const trumpArea = document.getElementById('trump-area');
-            const trumpDisplay = document.getElementById('trump-card-display');
-            const biddingArea = document.getElementById('bidding-area');
-            const myCardsContainer = document.getElementById('my-cards');
-            const trickArea = document.getElementById('trick-area');
-            const trickCardsDisplay = document.getElementById('trick-cards');
-            const roundResultArea = document.getElementById('round-result-area');
-            const roundResultsList = document.getElementById('round-results-list');
-            const btnNextRound = document.getElementById('btn-next-round');
+            const statusText = document.getElementById('game-status-text');
+            const substatusText = document.getElementById('game-substatus-text');
 
             if (roomData.status === 'waiting') {
-                statusText.textContent = "等待開局";
-                statusText.className = "text-3xl font-black tracking-wide drop-shadow-md text-slate-300";
-                substatusText.textContent = "房主可以隨時開始遊戲";
-                tableArea.classList.add('hidden');
-                trumpArea.classList.add('hidden');
+                statusText.textContent = "等待開局"; statusText.className = "text-xl md:text-3xl font-black text-slate-300";
+                substatusText.textContent = "房主可開始遊戲";
+                tableArea.classList.add('hidden'); trumpArea.classList.add('hidden');
             } else if (roomData.status === 'bidding' || roomData.status === 'playing_tricks') {
                 statusText.textContent = roomData.status === 'bidding' ? "🗣️ 叫牌階段" : "⚔️ 出牌階段";
-                statusText.className = "text-3xl font-black tracking-wide drop-shadow-md text-emerald-400";
+                statusText.className = "text-xl md:text-3xl font-black text-emerald-400";
                 
                 const currentTurnUid = roomData.turnOrder[roomData.currentTurnIndex];
                 const turnPlayerName = roomData.players.find(p => p.uid === currentTurnUid)?.name || "未知";
+                substatusText.innerHTML = roomData.currentTurnIndex === -1 ? `第 ${roomData.currentRound} 回合 - 結算中...` : `第 <b class="text-white">${roomData.currentRound}</b> 回合 - 輪到: <b class="text-yellow-400">${turnPlayerName}</b>`;
                 
-                if (roomData.currentTurnIndex === -1) {
-                    substatusText.textContent = `第 ${roomData.currentRound} 回合 - 結算中...`;
-                } else {
-                    substatusText.innerHTML = `第 <b class="text-white">${roomData.currentRound}</b> 回合 - 現在輪到: <b class="text-yellow-400">${turnPlayerName}</b>`;
-                }
+                tableArea.classList.remove('hidden'); tableArea.classList.add('flex');
                 
-                tableArea.classList.remove('hidden');
-                tableArea.classList.add('flex');
-                
-                if (trumpDisplay) {
+                if (roomData.trumpCard) {
                     trumpArea.classList.remove('hidden');
-                    trumpDisplay.innerHTML = renderCard(roomData.trumpCard);
+                    document.getElementById('trump-card-display').innerHTML = renderCard(roomData.trumpCard);
                 }
                 
-                if (myCardsContainer && roomData.hands && roomData.hands[currentUser.uid]) {
-                    const myHand = [...roomData.hands[currentUser.uid]];
-                    myHand.sort(sortCards);
+                if (roomData.hands && roomData.hands[currentUser.uid]) {
+                    const myHand = [...roomData.hands[currentUser.uid]].sort(sortCards);
                     const isMyTurn = (roomData.status === 'playing_tricks' && currentTurnUid === currentUser.uid);
-                    myCardsContainer.innerHTML = myHand.map(card => renderCard(card, isMyTurn)).join('');
+                    document.getElementById('my-cards').innerHTML = myHand.map(card => renderCard(card, isMyTurn)).join('');
                 }
 
-                if (biddingArea) {
-                    if (roomData.status === 'bidding' && currentTurnUid === currentUser.uid) {
-                        biddingArea.classList.remove('hidden');
-                        biddingArea.classList.add('flex');
-                        renderBiddingButtons(roomData);
-                    } else {
-                        biddingArea.classList.add('hidden');
-                        biddingArea.classList.remove('flex');
-                    }
-                }
+                const biddingArea = document.getElementById('bidding-area');
+                if (roomData.status === 'bidding' && currentTurnUid === currentUser.uid) {
+                    biddingArea.classList.remove('hidden'); biddingArea.classList.add('flex');
+                    renderBiddingButtons(roomData);
+                } else { biddingArea.classList.add('hidden'); biddingArea.classList.remove('flex'); }
 
-                if (trickArea && trickCardsDisplay) {
-                    if (roomData.status === 'playing_tricks') {
-                        trickArea.classList.remove('hidden');
-                        trickArea.classList.add('flex');
-                        
-                        if (roomData.currentTrick && roomData.currentTrick.length > 0) {
-                            trickCardsDisplay.innerHTML = roomData.currentTrick.map((t, idx) => {
-                                const pName = roomData.players.find(p => p.uid === t.uid)?.name || "未知";
-                                // 稍微旋轉卡片讓桌面看起來更自然
-                                const rotate = (idx * 15) - ((roomData.currentTrick.length - 1) * 7.5);
-                                return `<div class="flex flex-col items-center transform transition-all duration-300" style="transform: rotate(${rotate}deg) translateY(${Math.abs(rotate)}px);">
-                                            ${renderCard(t.card)}
-                                            <span class="text-[10px] mt-2 font-bold bg-slate-900/80 px-2 py-0.5 rounded-full text-slate-300 shadow">${pName}</span>
-                                        </div>`;
-                            }).join('');
-                        } else {
-                            trickCardsDisplay.innerHTML = '<span class="text-emerald-500/50 font-bold tracking-widest uppercase">等待出牌...</span>';
-                        }
-                    } else {
-                        trickArea.classList.add('hidden');
-                        trickArea.classList.remove('flex');
-                    }
-                }
-                
-                if (roundResultArea) {
-                    roundResultArea.classList.add('hidden');
-                    roundResultArea.classList.remove('flex');
-                }
-            } else if (roomData.status === 'finished_round') {
-                statusText.textContent = "🏆 回合結束";
-                statusText.className = "text-3xl font-black tracking-wide drop-shadow-md text-yellow-400";
-                substatusText.textContent = "正在等待房主開始下一回合...";
-                
-                tableArea.classList.remove('hidden');
-                tableArea.classList.add('flex');
-                
-                if (trumpArea) trumpArea.classList.add('hidden');
-                if (myCardsContainer) myCardsContainer.innerHTML = '';
-                if (biddingArea) { biddingArea.classList.add('hidden'); biddingArea.classList.remove('flex'); }
-                if (trickArea) { trickArea.classList.add('hidden'); trickArea.classList.remove('flex'); }
-                
-                if (roundResultArea) {
-                    roundResultArea.classList.remove('hidden');
-                    roundResultArea.classList.add('flex');
+                const trickArea = document.getElementById('trick-area');
+                if (roomData.status === 'playing_tricks') {
+                    trickArea.classList.add('border-emerald-700/50'); trickArea.classList.remove('border-transparent');
                     
-                    roundResultsList.innerHTML = roomData.players.map(p => {
-                        const bid = roomData.bids && roomData.bids[p.uid] !== undefined ? roomData.bids[p.uid] : 0;
-                        const won = roomData.tricksWon && roomData.tricksWon[p.uid] !== undefined ? roomData.tricksWon[p.uid] : 0;
-                        const success = (bid === won);
-                        const pointsEarned = success ? (10 + bid) : 0;
-                        
-                        return `
-                            <div class="flex justify-between items-center bg-slate-800/80 p-4 rounded-xl border ${success ? 'border-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'border-red-900/50 opacity-80'}">
-                                <span class="font-bold text-slate-100 text-lg">${p.name}</span>
-                                <div class="text-sm text-right flex items-center gap-4">
-                                    <div class="flex flex-col items-end">
-                                        <span class="text-slate-400 text-xs">預測: <b class="text-white">${bid}</b></span>
-                                        <span class="text-slate-400 text-xs">實際: <b class="text-white">${won}</b></span>
-                                    </div>
-                                    <span class="font-black text-2xl w-16 text-right ${success ? 'text-emerald-400' : 'text-red-500/70'}">${success ? '+' + pointsEarned : '+0'}</span>
-                                </div>
-                            </div>
-                        `;
-                    }).join('');
+                    if (roomData.currentTrick && roomData.currentTrick.length > 0) {
+                        const ledSuit = roomData.currentTrick[0].card.suit;
+                        const ind = document.getElementById('led-suit-indicator'); ind.classList.remove('hidden'); ind.classList.add('flex');
+                        document.getElementById('led-suit-symbol').textContent = ledSuit;
+                        document.getElementById('led-suit-symbol').className = `text-sm md:text-lg leading-none ${suitColors[ledSuit]}`;
 
-                    if (isHost) {
-                        btnNextRound.classList.remove('hidden');
-                        if (roomData.currentRound <= 1) {
-                            btnNextRound.textContent = "遊戲結束 (重新回到大廳)";
-                            btnNextRound.className = "bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-6 rounded-xl transition shadow-lg mt-6 w-full text-lg";
-                            btnNextRound.onclick = () => window.endGameToLobby(roomData);
-                        } else {
-                            btnNextRound.textContent = `開始下一回合 (發 ${roomData.currentRound - 1} 張牌)`;
-                            btnNextRound.className = "bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 px-6 rounded-xl transition shadow-lg mt-6 w-full text-lg animate-bounce";
-                            btnNextRound.onclick = () => window.startNextRound(roomData);
-                        }
+                        document.getElementById('trick-cards').innerHTML = roomData.currentTrick.map((t, idx) => {
+                            const pName = roomData.players.find(p => p.uid === t.uid)?.name || "未知";
+                            const rotate = (idx * 10) - ((roomData.currentTrick.length - 1) * 5); // 縮小旋轉角度以適應小螢幕
+                            const halo = idx === 0 ? 'ring-2 ring-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.6)]' : '';
+                            return `<div class="flex flex-col items-center transition-all duration-300 absolute" style="transform: rotate(${rotate}deg) translateY(${Math.abs(rotate)*0.5}px) translateX(${rotate*1.5}px);">
+                                        <div class="relative ${halo} rounded-lg">${renderCard(t.card)}</div>
+                                        <span class="text-[8px] md:text-[10px] mt-1 font-bold bg-slate-900/80 px-1.5 py-0.5 rounded-full text-slate-300 shadow truncate max-w-[50px] md:max-w-[70px]">${pName}</span>
+                                    </div>`;
+                        }).join('');
                     } else {
-                        btnNextRound.classList.add('hidden');
+                        document.getElementById('led-suit-indicator').classList.add('hidden');
+                        document.getElementById('trick-cards').innerHTML = '<span class="text-emerald-500/30 font-bold tracking-widest text-xs md:text-sm">桌上沒牌...</span>';
                     }
+                } else {
+                    document.getElementById('trick-cards').innerHTML = '';
+                    document.getElementById('led-suit-indicator').classList.add('hidden');
                 }
+                
+                document.getElementById('round-result-area').classList.add('hidden');
+                document.getElementById('round-result-area').classList.remove('flex');
+            } else if (roomData.status === 'finished_round') {
+                statusText.textContent = "🏆 回合結束"; statusText.className = "text-xl md:text-3xl font-black text-yellow-400";
+                substatusText.textContent = "等待下一回合...";
+                trumpArea.classList.add('hidden'); document.getElementById('my-cards').innerHTML = '';
+                document.getElementById('bidding-area').classList.add('hidden');
+                document.getElementById('trick-cards').innerHTML = ''; document.getElementById('led-suit-indicator').classList.add('hidden');
+                
+                const rrArea = document.getElementById('round-result-area');
+                rrArea.classList.remove('hidden'); rrArea.classList.add('flex');
+                
+                document.getElementById('round-results-list').innerHTML = roomData.players.map(p => {
+                    const bid = roomData.bids && roomData.bids[p.uid] !== undefined ? roomData.bids[p.uid] : 0;
+                    const won = roomData.tricksWon && roomData.tricksWon[p.uid] !== undefined ? roomData.tricksWon[p.uid] : 0;
+                    const success = (bid === won);
+                    const points = success ? (10 + bid) : 0;
+                    return `<div class="flex justify-between items-center bg-slate-800/90 p-2 md:p-3 rounded-lg border ${success ? 'border-emerald-500 shadow-md' : 'border-red-900/50 opacity-80'}">
+                                <span class="font-bold text-slate-100 text-sm md:text-base w-20 truncate">${p.name}</span>
+                                <div class="text-[10px] md:text-xs text-right flex items-center gap-2 md:gap-4">
+                                    <div class="flex flex-col items-end text-slate-400">
+                                        <span>叫: <b class="text-white">${bid}</b></span><span>吃: <b class="text-white">${won}</b></span>
+                                    </div>
+                                    <span class="font-black text-lg md:text-xl w-10 text-right ${success ? 'text-emerald-400' : 'text-red-500/70'}">+${points}</span>
+                                </div>
+                            </div>`;
+                }).join('');
+
+                const btnNext = document.getElementById('btn-next-round');
+                if (isHost) {
+                    btnNext.classList.remove('hidden');
+                    if (roomData.currentRound <= 1) {
+                        btnNext.textContent = "遊戲結束 (回大廳)"; btnNext.onclick = () => window.endGameToLobby(roomData);
+                    } else {
+                        btnNext.textContent = `下一回合 (發 ${roomData.currentRound - 1} 張)`; btnNext.onclick = () => window.startNextRound(roomData);
+                    }
+                } else btnNext.classList.add('hidden');
             }
         };
 
         const startGame = async () => {
             if (!currentUser || !currentRoomId) return;
             const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomId);
-            
             try {
-                const roomSnap = await getDoc(roomRef);
-                if (!roomSnap.exists()) return;
-                const data = roomSnap.data();
-                const players = data.players;
+                const roomSnap = await getDoc(roomRef); if (!roomSnap.exists()) return;
+                const data = roomSnap.data(); const players = data.players;
+                const startingCards = Math.min(10, Math.floor(51 / players.length));
+                const deck = shuffle(getDeck()); let hands = {};
+                players.forEach(p => hands[p.uid] = deck.splice(0, startingCards));
                 
-                // 動態計算第一回合的最大牌數 (52張牌 / 玩家人數，保留1張當王牌)
-                // 例如：4人玩發12張，7人玩發7張。預設最高從 10 張開始。
-                const maxCardsPossible = Math.floor(51 / players.length);
-                const startingCards = Math.min(10, maxCardsPossible);
-
-                const deck = shuffle(getDeck());
-                let hands = {};
-                let turnOrder = players.map(p => p.uid);
-
-                players.forEach(p => {
-                    hands[p.uid] = deck.splice(0, startingCards);
-                });
-                const trumpCard = deck.splice(0, 1)[0] || null;
-
                 window.playSound('card');
-
                 await updateDoc(roomRef, {
-                    status: 'bidding',
-                    currentRound: startingCards,
-                    hands: hands,
-                    trumpCard: trumpCard,
-                    turnOrder: turnOrder,
-                    currentTurnIndex: 0,
-                    bids: {},
-                    currentTrick: [], 
-                    tricksWon: {}     
+                    status: 'bidding', currentRound: startingCards, hands: hands, trumpCard: (deck.splice(0, 1)[0] || null),
+                    turnOrder: players.map(p => p.uid), currentTurnIndex: 0, bids: {}, currentTrick: [], tricksWon: {}     
                 });
-            } catch (error) {
-                console.error("開始遊戲失敗", error);
-            }
+            } catch (e) { console.error(e); }
         };
 
         const leaveRoom = async () => {
-            if (unsubscribeRoom) {
-                unsubscribeRoom();
-                unsubscribeRoom = null;
-            }
-
+            localStorage.removeItem('savedRoomId');
+            if (unsubscribeRoom) { unsubscribeRoom(); unsubscribeRoom = null; }
             if (currentRoomId && currentUser) {
                 try {
                     const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomId);
-                    const roomSnap = await getDoc(roomRef);
-                    if (roomSnap.exists()) {
-                        const roomData = roomSnap.data();
-                        const myPlayerObj = roomData.players.find(p => p.uid === currentUser.uid);
-                        
-                        if (myPlayerObj) {
-                            await updateDoc(roomRef, {
-                                players: arrayRemove(myPlayerObj)
-                            });
-                        }
+                    const snap = await getDoc(roomRef);
+                    if (snap.exists()) {
+                        const me = snap.data().players.find(p => p.uid === currentUser.uid);
+                        if (me) await updateDoc(roomRef, { players: arrayRemove(me) });
                     }
-                } catch (e) {
-                    console.error("更新離開狀態失敗", e);
-                }
+                } catch (e) {}
             }
-
             currentRoomId = null;
-            
-            document.getElementById('game-screen').classList.add('hidden');
-            document.getElementById('game-screen').classList.remove('flex');
-            document.getElementById('lobby-screen').classList.remove('hidden');
-            document.getElementById('btn-join-room').textContent = "加入";
-            document.getElementById('btn-join-room').disabled = false;
-            document.getElementById('btn-create-room').textContent = "創建新房間";
-            document.getElementById('btn-create-room').disabled = false;
+            document.getElementById('game-screen').classList.add('hidden'); document.getElementById('game-screen').classList.remove('flex');
+            document.getElementById('lobby-screen').classList.remove('hidden'); document.getElementById('lobby-screen').classList.add('flex');
+            document.getElementById('btn-join-room').textContent = "加入"; document.getElementById('btn-join-room').disabled = false;
+            document.getElementById('btn-create-room').textContent = "創建新房間"; document.getElementById('btn-create-room').disabled = false;
         };
 
         const suitsList = ['♠', '♥', '♦', '♣'];
         const suitColors = {'♠': 'card-suit-spades', '♥': 'card-suit-hearts', '♦': 'card-suit-diamonds', '♣': 'card-suit-clubs'};
         const valuesList = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
-        
         const suitWeight = {'♠': 4, '♥': 3, '♣': 2, '♦': 1};
         const valueWeight = {'2':2, '3':3, '4':4, '5':5, '6':6, '7':7, '8':8, '9':9, '10':10, 'J':11, 'Q':12, 'K':13, 'A':14};
 
-        const getDeck = () => {
-            let deck = [];
-            for (let suit of suitsList) {
-                for (let value of valuesList) {
-                    deck.push({ suit, value });
-                }
-            }
-            return deck;
-        };
+        const getDeck = () => { let d=[]; suitsList.forEach(s=>valuesList.forEach(v=>d.push({suit:s,value:v}))); return d; };
+        const shuffle = (d) => { for(let i=d.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[d[i],d[j]]=[d[j],d[i]];} return d; };
+        const sortCards = (a, b) => suitWeight[a.suit] !== suitWeight[b.suit] ? suitWeight[b.suit] - suitWeight[a.suit] : valueWeight[b.value] - valueWeight[a.value];
 
-        const shuffle = (deck) => {
-            for (let i = deck.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [deck[i], deck[j]] = [deck[j], deck[i]];
-            }
-            return deck;
-        };
-
-        const sortCards = (a, b) => {
-            if (suitWeight[a.suit] !== suitWeight[b.suit]) {
-                return suitWeight[b.suit] - suitWeight[a.suit];
-            }
-            return valueWeight[b.value] - valueWeight[a.value];
-        };
-
+        // 重新設計的極簡卡牌 UI
         const renderCard = (card, isPlayable = false) => {
             if (!card) return '';
-            const cursorClass = isPlayable ? 'cursor-pointer hover:border-emerald-400 hover:ring-2 hover:ring-emerald-400' : '';
-            const clickEvent = isPlayable ? `onclick="window.playCard('${card.suit}', '${card.value}')"` : '';
-            return `<div class="playing-card ${suitColors[card.suit]} ${cursorClass}" ${clickEvent}>
-                        <div class="absolute top-1 left-1.5 text-xs text-left leading-none tracking-tighter">
-                            <div class="font-black">${card.value}</div>
-                            <div class="text-[10px] mt-0.5">${card.suit}</div>
-                        </div>
-                        <span class="text-3xl mt-1">${card.suit}</span>
-                        <div class="absolute bottom-1 right-1.5 text-xs text-left leading-none tracking-tighter rotate-180">
-                            <div class="font-black">${card.value}</div>
-                            <div class="text-[10px] mt-0.5">${card.suit}</div>
-                        </div>
+            const curClass = isPlayable ? 'cursor-pointer hover:ring-2 hover:ring-emerald-400' : '';
+            const clickEv = isPlayable ? `onclick="window.playCard('${card.suit}', '${card.value}')"` : '';
+            
+            // 處理數字 10 時的微調（避免超出邊界）
+            const valClass = card.value === '10' ? 'text-lg md:text-xl tracking-tighter left-1' : 'text-xl md:text-2xl left-2';
+            
+            return `<div class="playing-card ${suitColors[card.suit]} ${curClass}" ${clickEv}>
+                        <div class="absolute top-1 ${valClass} font-black leading-none">${card.value}</div>
+                        <div class="absolute inset-0 flex items-center justify-center text-4xl md:text-5xl opacity-20 pointer-events-none">${card.suit}</div>
+                        <div class="absolute bottom-1 right-2 text-xl md:text-2xl leading-none">${card.suit}</div>
                     </div>`;
         };
 
         const renderBiddingButtons = (roomData) => {
-            const container = document.getElementById('bidding-buttons');
-            if(!container) return;
-            container.innerHTML = '';
-            
+            const container = document.getElementById('bidding-buttons'); container.innerHTML = '';
             const maxBid = roomData.currentRound;
             const isLastPlayer = roomData.currentTurnIndex === roomData.turnOrder.length - 1;
-            
-            let currentBidsSum = 0;
-            if (isLastPlayer) {
-                Object.values(roomData.bids || {}).forEach(b => currentBidsSum += b);
-            }
-            
-            const restrictedBid = isLastPlayer ? maxBid - currentBidsSum : -1;
+            let sum = 0; if (isLastPlayer) Object.values(roomData.bids || {}).forEach(b => sum += b);
+            const restrict = isLastPlayer ? maxBid - sum : -1;
 
             for (let i = 0; i <= maxBid; i++) {
                 const btn = document.createElement('button');
-                if (i === restrictedBid) {
-                    btn.className = 'px-5 py-3 rounded-xl font-bold bg-slate-800/50 text-slate-500 cursor-not-allowed border border-slate-700 shadow-inner relative group';
-                    btn.disabled = true;
-                    btn.innerHTML = `${i} <span class="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-red-600 text-white text-[10px] px-2 py-1 rounded hidden group-hover:block whitespace-nowrap">莊家限制</span>`;
+                if (i === restrict) {
+                    btn.className = 'px-3 py-2 md:px-5 md:py-3 rounded-lg font-bold bg-slate-800/80 text-slate-500 cursor-not-allowed border border-slate-700 relative text-sm md:text-base';
+                    btn.disabled = true; btn.innerHTML = `${i} <span class="absolute -top-6 left-1/2 -translate-x-1/2 bg-red-600 text-white text-[9px] px-1 py-0.5 rounded whitespace-nowrap">限制</span>`;
                 } else {
-                    btn.className = 'px-5 py-3 rounded-xl font-black transition-all bg-gradient-to-b from-blue-500 to-blue-700 hover:from-blue-400 hover:to-blue-600 text-white cursor-pointer shadow-lg border border-blue-400 hover:-translate-y-1 active:translate-y-0';
+                    btn.className = 'px-3 py-2 md:px-5 md:py-3 rounded-lg font-black transition-all bg-blue-600 hover:bg-blue-500 text-white cursor-pointer shadow-lg border border-blue-400 text-sm md:text-base';
                     btn.onclick = () => { window.playSound('card'); placeBid(i); };
                 }
-                btn.textContent = i;
-                container.appendChild(btn);
+                btn.textContent = i; container.appendChild(btn);
             }
         };
 
-        const placeBid = async (bidValue) => {
+        const placeBid = async (val) => {
             if (!currentUser || !currentRoomId) return;
-            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomId);
-            
+            const ref = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomId);
             try {
-                const roomSnap = await getDoc(roomRef);
-                if (!roomSnap.exists()) return;
-                const data = roomSnap.data();
-                
-                if (data.status !== 'bidding' || data.turnOrder[data.currentTurnIndex] !== currentUser.uid) {
-                    return; 
-                }
-
-                const newBids = { ...(data.bids || {}), [currentUser.uid]: bidValue };
-                let nextIndex = data.currentTurnIndex + 1;
-                let nextStatus = data.status;
-
-                if (nextIndex >= data.turnOrder.length) {
-                    nextStatus = 'playing_tricks';
-                    nextIndex = 0;
-                }
-
-                await updateDoc(roomRef, {
-                    bids: newBids,
-                    currentTurnIndex: nextIndex,
-                    status: nextStatus
-                });
-            } catch (error) {
-                console.error("叫牌失敗:", error);
-                showToast("叫牌發生錯誤，請重試");
-            }
+                const snap = await getDoc(ref); if (!snap.exists()) return;
+                const d = snap.data(); if (d.status !== 'bidding' || d.turnOrder[d.currentTurnIndex] !== currentUser.uid) return; 
+                let nextI = d.currentTurnIndex + 1; let nextS = d.status;
+                if (nextI >= d.turnOrder.length) { nextS = 'playing_tricks'; nextI = 0; }
+                await updateDoc(ref, { bids: { ...(d.bids || {}), [currentUser.uid]: val }, currentTurnIndex: nextI, status: nextS });
+            } catch (e) { showToast("叫牌錯誤"); }
         };
         
-        window.playCard = async (suit, value) => {
+        window.playCard = async (suit, val) => {
             if (!currentUser || !currentRoomId) return;
-            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomId);
-            
+            const ref = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomId);
             try {
-                const roomSnap = await getDoc(roomRef);
-                if (!roomSnap.exists()) return;
-                const data = roomSnap.data();
-                
-                if (data.status !== 'playing_tricks' || data.turnOrder[data.currentTurnIndex] !== currentUser.uid) {
-                    window.playSound('error');
-                    showToast("⚠️ 還沒輪到你出牌！");
-                    return; 
+                const snap = await getDoc(ref); if (!snap.exists()) return;
+                const d = snap.data();
+                if (d.status !== 'playing_tricks' || d.turnOrder[d.currentTurnIndex] !== currentUser.uid) { window.playSound('error'); showToast("還沒輪到你！"); return; }
+                const hand = d.hands[currentUser.uid];
+                const trk = d.currentTrick || [];
+                if (trk.length > 0) {
+                    const ls = trk[0].card.suit;
+                    if (hand.some(c => c.suit === ls) && suit !== ls) { window.playSound('error'); showToast(`必須出 ${ls}`); return; }
                 }
-
-                const myHand = data.hands[currentUser.uid];
-                
-                const currentTrick = data.currentTrick || [];
-                if (currentTrick.length > 0) {
-                    const ledSuit = currentTrick[0].card.suit;
-                    const hasLedSuit = myHand.some(c => c.suit === ledSuit);
-                    if (hasLedSuit && suit !== ledSuit) {
-                        window.playSound('error');
-                        showToast(`❌ 必須跟隨出 ${ledSuit} 花色！`);
-                        return;
-                    }
-                }
-
-                const cardIndex = myHand.findIndex(c => c.suit === suit && c.value === value);
-                if (cardIndex === -1) return;
-                
+                const idx = hand.findIndex(c => c.suit === suit && c.value === val); if (idx === -1) return;
                 window.playSound('card');
-
-                const playedCard = myHand.splice(cardIndex, 1)[0];
-                const updatedTrick = [...currentTrick, { uid: currentUser.uid, card: playedCard }];
-                
-                let nextIndex = data.currentTurnIndex + 1;
-
-                if (updatedTrick.length === data.turnOrder.length) {
-                    await updateDoc(roomRef, {
-                        hands: { ...data.hands, [currentUser.uid]: myHand },
-                        currentTrick: updatedTrick,
-                        currentTurnIndex: -1 
-                    });
-                    
-                    // 等待 2.5 秒讓大家看清楚桌面的牌再結算
-                    setTimeout(() => window.resolveTrick(currentRoomId, updatedTrick, data.trumpCard), 2500);
-                    return;
+                const pC = hand.splice(idx, 1)[0];
+                const newT = [...trk, { uid: currentUser.uid, card: pC }];
+                if (newT.length === d.turnOrder.length) {
+                    await updateDoc(ref, { hands: { ...d.hands, [currentUser.uid]: hand }, currentTrick: newT, currentTurnIndex: -1 }); return;
                 }
-
-                if (nextIndex >= data.turnOrder.length) nextIndex = 0;
-
-                await updateDoc(roomRef, {
-                    hands: { ...data.hands, [currentUser.uid]: myHand },
-                    currentTrick: updatedTrick,
-                    currentTurnIndex: nextIndex
-                });
-
-            } catch (error) {
-                console.error("出牌失敗:", error);
-                showToast("出牌發生錯誤");
-            }
+                let nIdx = d.currentTurnIndex + 1; if (nIdx >= d.turnOrder.length) nIdx = 0;
+                await updateDoc(ref, { hands: { ...d.hands, [currentUser.uid]: hand }, currentTrick: newT, currentTurnIndex: nIdx });
+            } catch (e) { showToast("出牌錯誤"); }
         };
 
-        window.resolveTrick = async (roomId, trick, trumpCard) => {
+        window.resolveTrick = async (roomId, trk, trump) => {
             if (!currentUser) return;
-            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
-            
+            const ref = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
             try {
-                const roomSnap = await getDoc(roomRef);
-                if (!roomSnap.exists()) return;
-                const data = roomSnap.data();
-
-                const trumpSuit = trumpCard ? trumpCard.suit : null;
-                let winner = trick[0];
-                
-                for (let i = 1; i < trick.length; i++) {
-                    const current = trick[i];
-                    const winningCard = winner.card;
-                    const evalCard = current.card;
-
-                    if (evalCard.suit === trumpSuit && winningCard.suit !== trumpSuit) {
-                        winner = current; 
-                    } else if (evalCard.suit === winningCard.suit) {
-                        if (valueWeight[evalCard.value] > valueWeight[winningCard.value]) {
-                            winner = current; 
-                        }
-                    }
+                const snap = await getDoc(ref); if (!snap.exists()) return; const d = snap.data();
+                if (d.status !== 'playing_tricks' || d.currentTurnIndex !== -1) return;
+                const tS = trump ? trump.suit : null; let win = trk[0];
+                for (let i = 1; i < trk.length; i++) {
+                    const c = trk[i];
+                    if (c.card.suit === tS && win.card.suit !== tS) win = c; 
+                    else if (c.card.suit === win.card.suit && valueWeight[c.card.value] > valueWeight[win.card.value]) win = c;
                 }
-
-                const winnerUid = winner.uid;
-                const winnerName = data.players.find(p => p.uid === winnerUid)?.name || "未知";
-                
-                const newTricksWon = { ...(data.tricksWon || {}) };
-                newTricksWon[winnerUid] = (newTricksWon[winnerUid] || 0) + 1;
-
-                const winnerIndex = data.turnOrder.indexOf(winnerUid);
-                const newTurnOrder = [
-                    ...data.turnOrder.slice(winnerIndex),
-                    ...data.turnOrder.slice(0, winnerIndex)
-                ];
-
-                const myHand = data.hands[currentUser.uid];
-                let nextStatus = 'playing_tricks';
-                
-                if (myHand.length === 0) {
-                    nextStatus = 'finished_round'; 
-                }
-
-                let newPlayers = data.players;
-                if (nextStatus === 'finished_round') {
-                    newPlayers = data.players.map(p => {
-                        const bid = data.bids && data.bids[p.uid] !== undefined ? data.bids[p.uid] : 0;
-                        const won = newTricksWon[p.uid] || 0;
-                        let roundScore = 0;
-                        if (bid === won) {
-                            roundScore = 10 + bid;
-                        }
-                        return { ...p, score: p.score + roundScore };
+                const wU = win.uid; const wN = d.players.find(p => p.uid === wU)?.name || "未知";
+                const nWon = { ...(d.tricksWon || {}) }; nWon[wU] = (nWon[wU] || 0) + 1;
+                const wIdx = d.turnOrder.indexOf(wU);
+                const nOrd = [...d.turnOrder.slice(wIdx), ...d.turnOrder.slice(0, wIdx)];
+                const empty = Object.values(d.hands).some(h => h.length === 0);
+                let nS = empty ? 'finished_round' : 'playing_tricks'; let nP = d.players;
+                if (nS === 'finished_round') {
+                    nP = d.players.map(p => {
+                        const b = d.bids?.[p.uid] || 0; const w = nWon[p.uid] || 0;
+                        return { ...p, score: p.score + (b === w ? 10 + b : 0) };
                     });
                 }
-
-                await updateDoc(roomRef, {
-                    currentTrick: [], 
-                    tricksWon: newTricksWon,
-                    currentTurnIndex: 0, 
-                    turnOrder: newTurnOrder,
-                    status: nextStatus,
-                    players: newPlayers 
-                });
-                
-                if (nextStatus === 'finished_round') {
-                     window.playSound('win');
-                     showToast("🏁 本局結束！結算分數中...");
-                } else {
-                     if(winnerUid === currentUser.uid) window.playSound('win');
-                     showToast(`🏆 ${winnerName} 贏得了這一墩！`);
-                }
-
-            } catch (error) {
-                console.error("結算墩數失敗:", error);
-            }
+                await updateDoc(ref, { currentTrick: [], tricksWon: nWon, currentTurnIndex: 0, turnOrder: nOrd, status: nS, players: nP });
+                if (nS === 'finished_round') { window.playSound('win'); showToast("🏁 結算分數..."); } 
+                else { if(wU === currentUser.uid) window.playSound('win'); showToast(`🏆 ${wN} 贏得這墩`); }
+            } catch (e) { console.error(e); }
         };
 
-        window.startNextRound = async (roomData) => {
+        window.startNextRound = async (d) => {
             if (!currentUser || !currentRoomId) return;
-            const btn = document.getElementById('btn-next-round');
-            if (btn) btn.disabled = true;
-
-            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomId);
-            const nextRoundCardCount = roomData.currentRound - 1; 
-            
-            const deck = shuffle(getDeck());
-            let hands = {};
-            const newTurnOrder = [...roomData.turnOrder.slice(1), roomData.turnOrder[0]];
-
-            roomData.players.forEach(p => {
-                hands[p.uid] = deck.splice(0, nextRoundCardCount);
-            });
-            const trumpCard = deck.splice(0, 1)[0] || null;
-
+            const btn = document.getElementById('btn-next-round'); if (btn) btn.disabled = true;
+            const ref = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomId);
+            const ct = d.currentRound - 1; const dk = shuffle(getDeck()); let hs = {};
+            d.players.forEach(p => hs[p.uid] = dk.splice(0, ct));
             window.playSound('card');
-
-            try {
-                await updateDoc(roomRef, {
-                    status: 'bidding',
-                    currentRound: nextRoundCardCount,
-                    hands: hands,
-                    trumpCard: trumpCard,
-                    turnOrder: newTurnOrder,
-                    currentTurnIndex: 0,
-                    bids: {},
-                    currentTrick: [],
-                    tricksWon: {}
-                });
-            } catch (e) {
-                console.error("開始下一回合失敗:", e);
-                if(btn) btn.disabled = false;
-            }
+            try { await updateDoc(ref, { status: 'bidding', currentRound: ct, hands: hs, trumpCard: dk.splice(0, 1)[0] || null, turnOrder: [...d.turnOrder.slice(1), d.turnOrder[0]], currentTurnIndex: 0, bids: {}, currentTrick: [], tricksWon: {} }); } 
+            catch (e) { if(btn) btn.disabled = false; }
         };
 
-        window.endGameToLobby = async (roomData) => {
+        window.endGameToLobby = async (d) => {
              if (!currentUser || !currentRoomId) return;
-             const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomId);
-             try {
-                const resetPlayers = roomData.players.map(p => ({ ...p, score: 0 }));
-                await updateDoc(roomRef, {
-                    status: 'waiting',
-                    players: resetPlayers,
-                    currentRound: 0,
-                    bids: {},
-                    hands: {},
-                    tricksWon: {}
-                });
-             } catch (e) {
-                 console.error("重置遊戲失敗", e);
-             }
+             const ref = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomId);
+             try { await updateDoc(ref, { status: 'waiting', players: d.players.map(p => ({ ...p, score: 0 })), currentRound: 0, bids: {}, hands: {}, tricksWon: {} }); } catch (e) {}
         };
 
         document.getElementById('btn-login').addEventListener('click', login);
-        document.getElementById('player-name').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') login();
-        });
+        document.getElementById('player-name').addEventListener('keypress', (e) => { if (e.key === 'Enter') login(); });
         document.getElementById('btn-create-room').addEventListener('click', createRoom);
-        document.getElementById('btn-join-room').addEventListener('click', joinRoom);
+        document.getElementById('room-id-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') joinRoom(); });
+        document.getElementById('btn-join-room').addEventListener('click', () => joinRoom());
         document.getElementById('btn-leave-room').addEventListener('click', leaveRoom);
         document.getElementById('btn-start-game').addEventListener('click', startGame);
 
