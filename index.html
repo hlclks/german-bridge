@@ -8,9 +8,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; }
-        .card-suit-hearts, .card-suit-diamonds { color: #ef4444; }
-        .card-suit-spades, .card-suit-clubs { color: #1e293b; }
-        .playing-card { background: white; border-radius: 0.5rem; padding: 1rem; width: 60px; height: 90px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; color: black; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+        .card-suit-hearts, .card-suit-diamonds { color: #dc2626 !important; } /* 強制鮮豔紅色 */
+        .card-suit-spades, .card-suit-clubs { color: #0f172a !important; } /* 黑色 */
+        .playing-card { background: white; border-radius: 0.5rem; padding: 1rem; width: 60px; height: 90px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); user-select: none; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center justify-center p-4">
@@ -18,9 +18,30 @@
     <!-- 全局提示框 -->
     <div id="toast" class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white px-4 py-2 rounded shadow-lg hidden transition-opacity duration-300 z-50"></div>
 
+    <!-- 教學 Modal -->
+    <div id="rules-modal" class="fixed inset-0 bg-black/80 hidden flex justify-center items-center z-50 p-4">
+        <div class="bg-slate-800 p-6 rounded-xl max-w-lg w-full max-h-[80vh] overflow-y-auto border border-slate-600 shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-yellow-400">德國橋牌 (Oh Hell) 教學</h2>
+                <button onclick="window.toggleRulesModal()" class="text-slate-400 hover:text-white text-2xl font-bold">&times;</button>
+            </div>
+            <div class="text-slate-300 space-y-3 text-sm leading-relaxed">
+                <p><strong class="text-blue-400">🎯 遊戲目標</strong><br>精準預測自己這回合能贏得「多少墩」。只有完全命中預測才能得分！</p>
+                <p><strong class="text-blue-400">🃏 發牌與王牌 (Trump)</strong><br>每回合發牌數會遞減。發完牌後會翻開一張牌作為「王牌」，王牌花色大於其他所有花色。</p>
+                <p><strong class="text-blue-400">🗣️ 叫牌階段</strong><br>看過手牌後，每人輪流喊出預測吃到的墩數。<br><span class="text-red-400 font-bold">莊家限制：</span>最後一位叫牌者，其叫牌數不能讓全場總和等於該局總牌數（必定有人會失敗）。</p>
+                <p><strong class="text-blue-400">⚔️ 出牌規則</strong><br>1. <strong>跟隨花色：</strong>第一個人出什麼花色，後面的人有該花色<span class="text-red-400 font-bold">必須跟出</span>。<br>2. <strong>無牌可跟：</strong>如果沒有該花色，可以出任意牌（包含出王牌切掉）。</p>
+                <p><strong class="text-blue-400">🏆 比大小與計分</strong><br>- 王牌最大；無王牌或同花色時比數字 (A > K > Q ... > 2)。<br>- 贏得一墩的人，成為下一輪第一個出牌的人。<br>- <strong>計分：</strong>實際吃墩數 = 預測墩數，可得 <b>10 分 + 預測數</b>。猜錯得 <b>0 分</b>。</p>
+            </div>
+            <button onclick="window.toggleRulesModal()" class="mt-6 w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded transition">我明白了</button>
+        </div>
+    </div>
+
     <!-- 畫面 1: 登入/設定名稱 -->
     <div id="login-screen" class="w-full max-w-md bg-slate-800 rounded-xl p-8 shadow-2xl text-center">
-        <h1 class="text-3xl font-bold mb-6 text-blue-400">德國橋牌 (Oh Hell)</h1>
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-blue-400">德國橋牌 (Oh Hell)</h1>
+            <button onclick="window.toggleRulesModal()" class="bg-slate-700 hover:bg-slate-600 text-xs px-3 py-1 rounded text-slate-300 transition">玩法教學</button>
+        </div>
         <p class="text-slate-400 mb-6">請輸入你的遊戲暱稱以開始</p>
         <input type="text" id="player-name" placeholder="你的暱稱" class="w-full px-4 py-3 rounded bg-slate-700 text-white border border-slate-600 focus:outline-none focus:border-blue-500 mb-4" value="玩家">
         <button id="btn-login" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded transition">進入大廳</button>
@@ -50,31 +71,34 @@
     <!-- 畫面 3: 遊戲房間 -->
     <div id="game-screen" class="w-full max-w-4xl hidden flex-col items-center">
         <div class="w-full flex justify-between items-center mb-6 bg-slate-800 p-4 rounded-lg shadow-md">
-            <div>
-                <h2 class="text-xl font-bold text-blue-400">房間 ID: <span id="current-room-id" class="text-white tracking-widest user-select-all cursor-pointer bg-slate-700 px-2 py-1 rounded" onclick="copyRoomId()"></span></h2>
+            <div class="flex items-center gap-4">
+                <h2 class="text-xl font-bold text-blue-400 flex items-center">房間 ID: <span id="current-room-id" class="ml-2 text-white tracking-widest cursor-pointer bg-slate-700 px-2 py-1 rounded" onclick="window.copyRoomId()"></span></h2>
+                <button onclick="window.toggleRulesModal()" class="bg-slate-700 hover:bg-slate-600 text-xs px-3 py-1 rounded text-slate-300 transition hidden sm:block">玩法教學</button>
             </div>
             <button id="btn-leave-room" class="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded text-sm font-bold transition">離開房間</button>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
-            <!-- 玩家列表區塊 -->
-            <div class="bg-slate-800 rounded-lg p-6 shadow-md md:col-span-1 border border-slate-700">
-                <h3 class="font-bold text-lg mb-4 border-b border-slate-600 pb-2">玩家列表 (<span id="player-count">0</span>/7)</h3>
-                <ul id="players-list" class="space-y-3">
-                    <!-- 玩家列表將由 JS 動態生成 -->
-                </ul>
-                
+            <!-- 玩家列表 -->
+            <div class="bg-slate-800 rounded-lg p-6 shadow-md md:col-span-1 border border-slate-700 flex flex-col justify-between">
+                <div>
+                    <h3 class="font-bold text-lg mb-4 border-b border-slate-600 pb-2">玩家列表 (<span id="player-count">0</span>/7)</h3>
+                    <ul id="players-list" class="space-y-3">
+                        <!-- 玩家列表 -->
+                    </ul>
+                </div>
+
                 <!-- 房主控制面板 -->
-                <div id="host-controls" class="mt-8 pt-4 border-t border-slate-600 hidden">
+                <div id="host-controls" class="mt-6 pt-4 border-t border-slate-600 hidden">
                     <p class="text-xs text-slate-400 mb-2">房主控制：</p>
                     <button id="btn-start-game" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded transition">開始遊戲 (發牌)</button>
                 </div>
             </div>
 
-            <!-- 遊戲主畫面區塊 (目前僅顯示狀態) -->
-            <div class="bg-slate-800 rounded-lg p-6 shadow-md md:col-span-2 border border-slate-700 flex flex-col items-center justify-center min-h-[300px]">
+            <!-- 遊戲主畫面區塊 -->
+            <div class="bg-slate-800 rounded-lg p-6 shadow-md md:col-span-2 border border-slate-700 flex flex-col items-center justify-center min-h-[360px]">
                 <h3 class="text-2xl font-bold mb-2 text-slate-300" id="game-status-text">等待玩家加入...</h3>
-                <p class="text-slate-400 mb-6" id="game-substatus-text">遊戲尚未開始</p>
+                <p class="text-slate-400 mb-6 text-center" id="game-substatus-text">遊戲尚未開始</p>
                 
                 <!-- 遊戲牌桌展示 -->
                 <div id="table-area" class="hidden flex-col items-center w-full">
@@ -87,30 +111,30 @@
                     <div id="bidding-area" class="mb-6 hidden flex-col items-center w-full bg-slate-700 p-4 rounded-lg border border-slate-600">
                         <p class="text-yellow-400 font-bold mb-2">輪到你叫牌 (預測吃幾墩)：</p>
                         <div id="bidding-buttons" class="flex flex-wrap gap-2 justify-center">
-                            <!-- 叫牌按鈕動態生成 -->
+                            <!-- 叫牌按鈕 -->
                         </div>
                     </div>
 
-                    <!-- 新增：桌面出牌區 -->
+                    <!-- 桌面出牌區 -->
                     <div id="trick-area" class="mb-6 hidden flex-col items-center w-full bg-emerald-900/30 p-4 rounded-lg border border-emerald-700/50 min-h-[160px]">
                         <p class="text-emerald-400 font-bold mb-2">桌上的牌：</p>
                         <div id="trick-cards" class="flex flex-wrap gap-4 justify-center">
-                            <!-- 打出的牌將在這裡顯示 -->
+                            <!-- 打出的牌 -->
                         </div>
                     </div>
 
-                    <!-- 新增：回合結算區 -->
+                    <!-- 回合結算區 -->
                     <div id="round-result-area" class="mb-6 hidden flex-col items-center w-full bg-slate-700 p-4 rounded-lg border border-slate-600">
                         <p class="text-yellow-400 font-bold mb-4 text-xl">回合結算</p>
                         <div id="round-results-list" class="w-full max-w-md space-y-2 mb-4">
-                            <!-- 結算成績動態生成 -->
+                            <!-- 結算成績 -->
                         </div>
                         <button id="btn-next-round" class="hidden bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-6 rounded transition">開始下一回合</button>
                     </div>
 
                     <p class="mb-4 text-yellow-400 font-bold">你的手牌：</p>
                     <div id="my-cards" class="flex flex-wrap gap-2 justify-center">
-                        <!-- 手牌將在這裡顯示 -->
+                        <!-- 手牌 -->
                     </div>
                 </div>
             </div>
@@ -120,10 +144,9 @@
     <!-- Firebase 模組化 SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // ⚠️ 已經替換為你的真實 Firebase 設定
         const appId = 'my-german-bridge'; 
         const firebaseConfig = {
             apiKey: "AIzaSyBXguPTHpAEJyv8BVXZItIvut5FPIMNf5o",
@@ -140,16 +163,12 @@
         let unsubscribeRoom = null;
         let myPlayerName = "玩家";
 
-        // 初始化 Firebase (若有配置)
         if (Object.keys(firebaseConfig).length > 0) {
             app = initializeApp(firebaseConfig);
             db = getFirestore(app);
             auth = getAuth(app);
         }
 
-        // --- 核心邏輯 ---
-
-        // 1. 顯示提示訊息
         window.showToast = (msg, duration = 3000) => {
             const toast = document.getElementById('toast');
             toast.textContent = msg;
@@ -159,16 +178,18 @@
 
         window.copyRoomId = () => {
             if(!currentRoomId) return;
-            const tempInput = document.createElement("input");
-            tempInput.value = currentRoomId;
-            document.body.appendChild(tempInput);
-            tempInput.select();
-            document.execCommand("copy");
-            document.body.removeChild(tempInput);
-            showToast("房間 ID 已複製！");
-        }
+            navigator.clipboard.writeText(currentRoomId).then(() => {
+                showToast("房間 ID 已複製！");
+            }).catch(() => {
+                showToast("複製失敗，請手動複製");
+            });
+        };
 
-        // 2. 登入系統
+        window.toggleRulesModal = () => {
+            const modal = document.getElementById('rules-modal');
+            modal.classList.toggle('hidden');
+        };
+
         const login = async () => {
             if (!auth) {
                 showToast("Firebase 未正確設定，無法連線。");
@@ -180,16 +201,10 @@
             document.getElementById('btn-login').disabled = true;
 
             try {
-                if (typeof __initial_auth_token !== 'undefined') {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-                
+                await signInAnonymously(auth);
                 currentUser = auth.currentUser;
                 document.getElementById('display-name').textContent = myPlayerName;
                 
-                // 切換畫面
                 document.getElementById('login-screen').classList.add('hidden');
                 document.getElementById('lobby-screen').classList.remove('hidden');
             } catch (error) {
@@ -200,19 +215,17 @@
             }
         };
 
-        // 3. 創建房間
         const createRoom = async () => {
             if (!currentUser) return;
             const btn = document.getElementById('btn-create-room');
             btn.textContent = "創建中...";
             btn.disabled = true;
 
-            // 產生隨機 5 碼 ID
             const roomId = Math.random().toString(36).substring(2, 7).toUpperCase();
             const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
 
             const initialData = {
-                status: 'waiting', // waiting, playing, finished
+                status: 'waiting',
                 hostId: currentUser.uid,
                 players: [{
                     uid: currentUser.uid,
@@ -235,7 +248,6 @@
             }
         };
 
-        // 4. 加入房間 (UI 觸發)
         const joinRoom = async () => {
             const roomId = document.getElementById('room-id-input').value.trim().toUpperCase();
             if (!roomId) {
@@ -252,7 +264,6 @@
                 const roomSnap = await getDoc(roomRef);
                 if (roomSnap.exists()) {
                     const roomData = roomSnap.data();
-                    // 檢查是否已在房間內 (斷線重連)
                     const existingPlayer = roomData.players.find(p => p.uid === currentUser.uid);
                     
                     if (!existingPlayer) {
@@ -269,7 +280,6 @@
                             return;
                         }
                         
-                        // 將自己加入玩家陣列
                         await updateDoc(roomRef, {
                             players: arrayUnion({
                                 uid: currentUser.uid,
@@ -293,26 +303,22 @@
             }
         };
 
-        // 5. 進入房間邏輯與監聽狀態 (核心同步機制)
         const joinRoomLogic = (roomId) => {
             currentRoomId = roomId;
             document.getElementById('current-room-id').textContent = roomId;
             
-            // 切換畫面
             document.getElementById('lobby-screen').classList.add('hidden');
             document.getElementById('game-screen').classList.remove('hidden');
             document.getElementById('game-screen').classList.add('flex');
 
             const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
             
-            // 監聽房間資料變化 (Firestore Real-time)
             unsubscribeRoom = onSnapshot(roomRef, (docSnap) => {
                 if (!docSnap.exists()) {
                     showToast("房間已被關閉");
                     leaveRoom();
                     return;
                 }
-
                 const data = docSnap.data();
                 updateGameUI(data);
             }, (error) => {
@@ -320,9 +326,7 @@
             });
         };
 
-        // 6. 更新遊戲介面 (根據 Firebase 資料)
         const updateGameUI = (roomData) => {
-            // 6a. 更新玩家列表
             const playersList = document.getElementById('players-list');
             playersList.innerHTML = '';
             document.getElementById('player-count').textContent = roomData.players.length;
@@ -339,7 +343,6 @@
                     isHost = true;
                 }
 
-                // 新增：顯示叫牌數與已吃墩數
                 let bidText = "";
                 let trickText = "";
                 if (roomData.status === 'bidding' || roomData.status === 'playing_tricks' || roomData.status === 'finished_round') {
@@ -361,7 +364,6 @@
                 playersList.appendChild(li);
             });
 
-            // 6b. 房主權限控制
             const hostControls = document.getElementById('host-controls');
             if (isHost && roomData.status === 'waiting') {
                 hostControls.classList.remove('hidden');
@@ -369,7 +371,6 @@
                 hostControls.classList.add('hidden');
             }
 
-            // 6c. 遊戲狀態顯示
             const statusText = document.getElementById('game-status-text');
             const substatusText = document.getElementById('game-substatus-text');
             const tableArea = document.getElementById('table-area');
@@ -403,10 +404,8 @@
                 tableArea.classList.remove('hidden');
                 tableArea.classList.add('flex');
                 
-                // 顯示王牌
                 if (trumpDisplay) trumpDisplay.innerHTML = renderCard(roomData.trumpCard);
                 
-                // 顯示手牌並排序 (加入可點擊判斷)
                 if (myCardsContainer && roomData.hands && roomData.hands[currentUser.uid]) {
                     const myHand = [...roomData.hands[currentUser.uid]];
                     myHand.sort(sortCards);
@@ -414,7 +413,6 @@
                     myCardsContainer.innerHTML = myHand.map(card => renderCard(card, isMyTurn)).join('');
                 }
 
-                // 處理叫牌介面 (只在你的回合顯示)
                 if (biddingArea) {
                     if (roomData.status === 'bidding' && currentTurnUid === currentUser.uid) {
                         biddingArea.classList.remove('hidden');
@@ -426,7 +424,6 @@
                     }
                 }
 
-                // 處理桌面出牌區
                 if (trickArea && trickCardsDisplay) {
                     if (roomData.status === 'playing_tricks') {
                         trickArea.classList.remove('hidden');
@@ -461,7 +458,6 @@
                 tableArea.classList.remove('hidden');
                 tableArea.classList.add('flex');
                 
-                // 隱藏不需要的區塊
                 if (trumpDisplay) trumpDisplay.innerHTML = '';
                 if (myCardsContainer) myCardsContainer.innerHTML = '';
                 if (biddingArea) { biddingArea.classList.add('hidden'); biddingArea.classList.remove('flex'); }
@@ -471,7 +467,6 @@
                     roundResultArea.classList.remove('hidden');
                     roundResultArea.classList.add('flex');
                     
-                    // 渲染結算畫面
                     roundResultsList.innerHTML = roomData.players.map(p => {
                         const bid = roomData.bids && roomData.bids[p.uid] !== undefined ? roomData.bids[p.uid] : 0;
                         const won = roomData.tricksWon && roomData.tricksWon[p.uid] !== undefined ? roomData.tricksWon[p.uid] : 0;
@@ -489,11 +484,9 @@
                         `;
                     }).join('');
 
-                    // 房主控制「下一回合」按鈕
                     if (isHost) {
                         btnNextRound.classList.remove('hidden');
                         btnNextRound.onclick = () => window.startNextRound(roomData);
-                        // 如果已經是最後一局 (1 張牌)，顯示重新遊戲按鈕
                         if (roomData.currentRound <= 1) {
                             btnNextRound.textContent = "遊戲結束 (重新回到大廳)";
                             btnNextRound.className = "bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded transition mt-4 w-full";
@@ -509,7 +502,6 @@
             }
         };
 
-        // 7. 開始遊戲 (僅房主可點擊)
         const startGame = async () => {
             if (!currentUser || !currentRoomId) return;
             const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomId);
@@ -520,18 +512,16 @@
                 const data = roomSnap.data();
                 const players = data.players;
                 
-                // 洗牌與發牌
                 const deck = shuffle(getDeck());
-                const roundCards = 10; // 預設第一局發 10 張
+                const roundCards = 10;
                 let hands = {};
                 let turnOrder = players.map(p => p.uid);
 
                 players.forEach(p => {
                     hands[p.uid] = deck.splice(0, roundCards);
                 });
-                const trumpCard = deck.splice(0, 1)[0] || null; // 翻開王牌
+                const trumpCard = deck.splice(0, 1)[0] || null;
 
-                // 將狀態改為 bidding，並初始化回合資訊
                 await updateDoc(roomRef, {
                     status: 'bidding',
                     currentRound: roundCards,
@@ -540,18 +530,17 @@
                     turnOrder: turnOrder,
                     currentTurnIndex: 0,
                     bids: {},
-                    currentTrick: [], // 初始化桌面卡片
-                    tricksWon: {}     // 初始化吃墩數
+                    currentTrick: [], 
+                    tricksWon: {}     
                 });
             } catch (error) {
                 console.error("開始遊戲失敗", error);
             }
         };
 
-        // 8. 離開房間
         const leaveRoom = async () => {
             if (unsubscribeRoom) {
-                unsubscribeRoom(); // 停止監聽
+                unsubscribeRoom();
                 unsubscribeRoom = null;
             }
 
@@ -564,7 +553,6 @@
                         const myPlayerObj = roomData.players.find(p => p.uid === currentUser.uid);
                         
                         if (myPlayerObj) {
-                            // 從陣列中移除自己
                             await updateDoc(roomRef, {
                                 players: arrayRemove(myPlayerObj)
                             });
@@ -577,7 +565,6 @@
 
             currentRoomId = null;
             
-            // UI 重置
             document.getElementById('game-screen').classList.add('hidden');
             document.getElementById('game-screen').classList.remove('flex');
             document.getElementById('lobby-screen').classList.remove('hidden');
@@ -587,7 +574,6 @@
             document.getElementById('btn-create-room').disabled = false;
         };
 
-        // --- 撲克牌邏輯與叫牌系統 ---
         const suitsList = ['♠', '♥', '♦', '♣'];
         const suitColors = {'♠': 'card-suit-spades', '♥': 'card-suit-hearts', '♦': 'card-suit-diamonds', '♣': 'card-suit-clubs'};
         const valuesList = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
@@ -643,7 +629,6 @@
                 Object.values(roomData.bids || {}).forEach(b => currentBidsSum += b);
             }
             
-            // 德國橋牌規則：最後一位玩家不能叫讓總和等於回合數的數字
             const restrictedBid = isLastPlayer ? maxBid - currentBidsSum : -1;
 
             for (let i = 0; i <= maxBid; i++) {
@@ -670,7 +655,6 @@
                 if (!roomSnap.exists()) return;
                 const data = roomSnap.data();
                 
-                // 安全檢查：確定是自己的回合
                 if (data.status !== 'bidding' || data.turnOrder[data.currentTurnIndex] !== currentUser.uid) {
                     return; 
                 }
@@ -679,7 +663,6 @@
                 let nextIndex = data.currentTurnIndex + 1;
                 let nextStatus = data.status;
 
-                // 如果所有人都叫完牌了，自動切換至「出牌階段 (playing_tricks)」
                 if (nextIndex >= data.turnOrder.length) {
                     nextStatus = 'playing_tricks';
                     nextIndex = 0;
@@ -695,8 +678,6 @@
                 showToast("叫牌發生錯誤，請重試");
             }
         };
-
-        // --- 核心：出牌與結算邏輯 (Phase 3) ---
         
         window.playCard = async (suit, value) => {
             if (!currentUser || !currentRoomId) return;
@@ -707,7 +688,6 @@
                 if (!roomSnap.exists()) return;
                 const data = roomSnap.data();
                 
-                // 1. 檢查是否是自己的回合、狀態是否為出牌階段
                 if (data.status !== 'playing_tricks' || data.turnOrder[data.currentTurnIndex] !== currentUser.uid) {
                     showToast("還沒輪到你出牌！");
                     return; 
@@ -715,7 +695,6 @@
 
                 const myHand = data.hands[currentUser.uid];
                 
-                // 2. 檢查花色跟隨規則
                 const currentTrick = data.currentTrick || [];
                 if (currentTrick.length > 0) {
                     const ledSuit = currentTrick[0].card.suit;
@@ -726,7 +705,6 @@
                     }
                 }
 
-                // 3. 移除手牌並加到桌上
                 const cardIndex = myHand.findIndex(c => c.suit === suit && c.value === value);
                 if (cardIndex === -1) return;
                 
@@ -735,21 +713,17 @@
                 
                 let nextIndex = data.currentTurnIndex + 1;
 
-                // 4. 檢查是否所有人都出完牌了 (一墩結束)
                 if (updatedTrick.length === data.turnOrder.length) {
-                    // 更新到 Firebase 讓大家看到最後一張牌，並暫停操作
                     await updateDoc(roomRef, {
                         hands: { ...data.hands, [currentUser.uid]: myHand },
                         currentTrick: updatedTrick,
-                        currentTurnIndex: -1 // 鎖定狀態
+                        currentTurnIndex: -1 
                     });
                     
-                    // 等待 2.5 秒後，由最後一位出牌的人負責觸發結算 (避免多人同時結算)
                     setTimeout(() => window.resolveTrick(currentRoomId, updatedTrick, data.trumpCard), 2500);
                     return;
                 }
 
-                // 5. 還沒出完，換下一個人
                 if (nextIndex >= data.turnOrder.length) nextIndex = 0;
 
                 await updateDoc(roomRef, {
@@ -773,7 +747,6 @@
                 if (!roomSnap.exists()) return;
                 const data = roomSnap.data();
 
-                // 判斷這墩誰贏
                 const trumpSuit = trumpCard ? trumpCard.suit : null;
                 let winner = trick[0];
                 
@@ -782,12 +755,11 @@
                     const winningCard = winner.card;
                     const evalCard = current.card;
 
-                    // 規則: 1. 王牌大於一切 2. 否則必須是引牌花色才能比大小
                     if (evalCard.suit === trumpSuit && winningCard.suit !== trumpSuit) {
-                        winner = current; // 用王牌切掉
+                        winner = current; 
                     } else if (evalCard.suit === winningCard.suit) {
                         if (valueWeight[evalCard.value] > valueWeight[winningCard.value]) {
-                            winner = current; // 同花色比大小
+                            winner = current; 
                         }
                     }
                 }
@@ -795,33 +767,28 @@
                 const winnerUid = winner.uid;
                 const winnerName = data.players.find(p => p.uid === winnerUid)?.name || "未知";
                 
-                // 更新贏家墩數
                 const newTricksWon = { ...(data.tricksWon || {}) };
                 newTricksWon[winnerUid] = (newTricksWon[winnerUid] || 0) + 1;
 
-                // 贏家成為下回合第一個出牌的人
                 const winnerIndex = data.turnOrder.indexOf(winnerUid);
                 const newTurnOrder = [
                     ...data.turnOrder.slice(winnerIndex),
                     ...data.turnOrder.slice(0, winnerIndex)
                 ];
 
-                // 檢查是否還有手牌
                 const myHand = data.hands[currentUser.uid];
                 let nextStatus = 'playing_tricks';
                 
                 if (myHand.length === 0) {
-                    nextStatus = 'finished_round'; // 手牌歸零，進入結算階段
+                    nextStatus = 'finished_round'; 
                 }
 
                 let newPlayers = data.players;
                 if (nextStatus === 'finished_round') {
-                    // 計算分數並更新玩家陣列
                     newPlayers = data.players.map(p => {
                         const bid = data.bids && data.bids[p.uid] !== undefined ? data.bids[p.uid] : 0;
                         const won = newTricksWon[p.uid] || 0;
                         let roundScore = 0;
-                        // 德國橋牌計分：預測精準得 10 分 + 叫牌數，否則 0 分
                         if (bid === won) {
                             roundScore = 10 + bid;
                         }
@@ -830,12 +797,12 @@
                 }
 
                 await updateDoc(roomRef, {
-                    currentTrick: [], // 清空桌面
+                    currentTrick: [], 
                     tricksWon: newTricksWon,
-                    currentTurnIndex: 0, // 因為贏家在 newTurnOrder 排第 0 位
+                    currentTurnIndex: 0, 
                     turnOrder: newTurnOrder,
                     status: nextStatus,
-                    players: newPlayers // 如果回合結束，這裡會更新總分
+                    players: newPlayers 
                 });
                 
                 if (nextStatus === 'finished_round') {
@@ -855,11 +822,10 @@
             if (btn) btn.disabled = true;
 
             const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomId);
-            const nextRoundCardCount = roomData.currentRound - 1; // 牌數遞減
+            const nextRoundCardCount = roomData.currentRound - 1; 
             
             const deck = shuffle(getDeck());
             let hands = {};
-            // 輪流做莊：讓一開始的下一個人成為這回合的第一個叫牌/出牌者
             const newTurnOrder = [...roomData.turnOrder.slice(1), roomData.turnOrder[0]];
 
             roomData.players.forEach(p => {
@@ -889,7 +855,6 @@
              if (!currentUser || !currentRoomId) return;
              const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomId);
              try {
-                // 將狀態設回 waiting，分數歸零，重新設定初始 turnOrder 等待重新開始
                 const resetPlayers = roomData.players.map(p => ({ ...p, score: 0 }));
                 await updateDoc(roomRef, {
                     status: 'waiting',
@@ -904,7 +869,6 @@
              }
         };
 
-        // --- 綁定事件 ---
         document.getElementById('btn-login').addEventListener('click', login);
         document.getElementById('player-name').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') login();
