@@ -396,6 +396,37 @@
                     const existingPlayer = roomData.players.find(p => p.uid === currentUser.uid);
                     
                     if (!existingPlayer) {
+                        // ====== 新增：名稱接管機制 (跨裝置重連) ======
+                        const playerToTakeOver = roomData.players.find(p => p.name === myPlayerName);
+                        if (playerToTakeOver && roomData.status !== 'waiting') {
+                            const oldUid = playerToTakeOver.uid;
+                            const newUid = currentUser.uid;
+
+                            // 全面更新資料庫中的 UID，無縫接軌所有遊戲狀態
+                            const newPlayers = roomData.players.map(p => p.uid === oldUid ? { ...p, uid: newUid } : p);
+                            const newTurnOrder = roomData.turnOrder.map(uid => uid === oldUid ? newUid : uid);
+                            const newHands = { ...roomData.hands };
+                            if (newHands[oldUid]) { newHands[newUid] = newHands[oldUid]; delete newHands[oldUid]; }
+                            const newBids = { ...roomData.bids };
+                            if (newBids[oldUid] !== undefined) { newBids[newUid] = newBids[oldUid]; delete newBids[oldUid]; }
+                            const newTricksWon = { ...roomData.tricksWon };
+                            if (newTricksWon[oldUid] !== undefined) { newTricksWon[newUid] = newTricksWon[oldUid]; delete newTricksWon[oldUid]; }
+                            const newCurrentTrick = (roomData.currentTrick || []).map(t => t.uid === oldUid ? { ...t, uid: newUid } : t);
+                            const newHostId = roomData.hostId === oldUid ? newUid : roomData.hostId;
+
+                            await updateDoc(roomRef, {
+                                players: newPlayers, turnOrder: newTurnOrder, hands: newHands, bids: newBids,
+                                tricksWon: newTricksWon, currentTrick: newCurrentTrick, hostId: newHostId
+                            });
+                            
+                            localStorage.setItem('savedRoomId', roomIdInput);
+                            joinRoomLogic(roomIdInput);
+                            showToast("✅ 已成功接管原座位！");
+                            if (btn) { btn.textContent = "加入房間"; btn.disabled = false; }
+                            return;
+                        }
+                        // ===========================================
+
                         if (roomData.players.length >= 7) { showToast("房間滿員"); if(btn){btn.textContent="加入房間";btn.disabled=false;} return; }
                         if (roomData.status !== 'waiting') { showToast("遊戲已開始"); if(btn){btn.textContent="加入房間";btn.disabled=false;} return; }
                         // 加入時使用當前最新的 myPlayerName
@@ -672,8 +703,12 @@
                     const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomId);
                     const snap = await getDoc(roomRef);
                     if (snap.exists()) {
-                        const me = snap.data().players.find(p => p.uid === currentUser.uid);
-                        if (me) await updateDoc(roomRef, { players: arrayRemove(me) });
+                        const data = snap.data();
+                        const me = data.players.find(p => p.uid === currentUser.uid);
+                        // ====== 修正：只有在等待大廳才將玩家從名單刪除，若遊戲進行中則保留座位供重連 ======
+                        if (me && data.status === 'waiting') {
+                            await updateDoc(roomRef, { players: arrayRemove(me) });
+                        }
                     }
                 } catch (e) {}
             }
